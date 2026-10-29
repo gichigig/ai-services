@@ -566,39 +566,44 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     import json
     import re
 
-    # Build structured elements summary for the prompt with container context
+    # Build structured Accessibility Tree summary for the prompt with container context
     elements_summary = []
     for el in req.elements[:120]:
-        desc = f"[{el.id}] <{el.tag}"
-        if el.type: desc += f' type="{el.type}"'
-        if el.name: desc += f' name="{el.name}"'
-        if el.placeholder: desc += f' placeholder="{el.placeholder}"'
-        if el.aria: desc += f' aria-label="{el.aria}"'
-        if el.href: desc += f' href="{el.href}"'
-        desc += ">"
-        if el.text:
-            cleaned_text = " ".join(el.text.split())[:100]
+        role_label = f'role="{el.role}"' if el.role else f'<{el.tag}>'
+        desc = f"[{el.id}] {role_label}"
+        if el.name:
+            desc += f' name="{el.name}"'
+        if el.text and el.text != el.name:
+            cleaned_text = " ".join(el.text.split())[:80]
             desc += f' text="{cleaned_text}"'
+        if el.placeholder:
+            desc += f' placeholder="{el.placeholder}"'
+        if el.type and el.type != 'text':
+            desc += f' type="{el.type}"'
+        if el.href:
+            desc += f' href="{el.href}"'
         if el.container:
             desc += f' | In: {el.container}'
         elements_summary.append(desc)
 
-    elements_text = "\n".join(elements_summary) if elements_summary else "No interactive elements found."
+    elements_text = "\n".join(elements_summary) if elements_summary else "No accessible elements found."
     form_text = json.dumps(req.form_values or {}, indent=2)
 
     system_prompt = (
         "You are an autonomous AI browser agent navigating Kenyan eCitizen government portals (BRS, NTSA, DCI).\n"
-        "You analyze HTML DOM interactive elements and reason about the exact next action to make progress toward the user's task goal.\n\n"
+        "You analyze the live DOM & Accessibility Tree (roles, accessible names, containers) and decide the exact next action to make progress toward the user's task goal.\n\n"
         "Reasoning Guidelines:\n"
         "1. Prioritize elements matching the task goal (e.g. for Business Name Search, target 'Business Registration Service' or 'Name Search', NOT unrelated services like 'Manual Services' or 'Insolvency').\n"
-        "2. If an unwanted popup, public notice, or modal dialog is blocking the view, dismiss it by clicking its close button (e.g. '×' or close button in the modal header).\n"
-        "3. If input fields for the target form are visible on screen, choose action 'fill' with the appropriate value from Available Form Data.\n"
-        "4. If a submit, continue, proceed, or next button is visible after filling fields, choose action 'click' on that button.\n"
-        "5. If on a login or SMS OTP verification screen that requires user credentials, choose action 'wait'.\n"
-        "6. If reached a statutory fee / payment screen, choose action 'wait' for payment confirmation.\n\n"
+        "2. Always pick actionable leaf controls (buttons, links, inputs). Never click container wrappers if an inner button or link is available.\n"
+        "3. If an unwanted popup, public notice, or modal dialog is blocking the view, dismiss it by clicking its close button (e.g. '×' or close button in the modal header).\n"
+        "4. If input fields for the target form are visible on screen, choose action 'fill' with the appropriate value from Available Form Data.\n"
+        "5. If a submit, continue, proceed, or next button is visible after filling fields, choose action 'click' on that button.\n"
+        "6. If on a login or SMS OTP verification screen that requires user credentials, choose action 'wait'.\n"
+        "7. If reached a statutory fee / payment screen, choose action 'wait' for payment confirmation.\n"
+        "8. If an [ALERT / RE-INSPECTION] notice is present indicating that the previous click produced no response, do NOT repeat the same element. Inspect the Accessibility Tree and choose the actual actionable button or alternative control.\n\n"
         "Respond ONLY with a valid JSON object matching this schema:\n"
         "{\n"
-        '  "thought": "<your chain-of-thought reasoning analyzing the HTML context>",\n'
+        '  "thought": "<your chain-of-thought reasoning analyzing the Accessibility Tree>",\n'
         '  "action": "click" | "fill" | "select" | "wait",\n'
         '  "element_id": <int: id of the chosen element, or null if wait>,\n'
         '  "fill_value": "<string to fill, or null>",\n'
@@ -607,15 +612,18 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         "}"
     )
 
+    alert_text = f"\n[ALERT / RE-INSPECTION]: {req.last_error}\n" if req.last_error else ""
+
     user_prompt = (
         f"Task Goal: {req.task_goal}\n"
         f"Current Step: {req.step_title}\n"
-        f"Step Description: {req.step_description or 'Analyze HTML and proceed autonomously'}\n"
+        f"Step Description: {req.step_description or 'Analyze Accessibility Tree and proceed autonomously'}\n"
         f"Current Page URL: {req.url}\n"
         f"Page Title: {req.page_title or 'eCitizen Portal'}\n"
+        f"{alert_text}"
         f"Available Form Data to Fill:\n{form_text}\n\n"
-        f"Visible Interactive Elements with Containers:\n{elements_text}\n\n"
-        "Analyze the available elements and decide the exact next action to make progress toward the goal."
+        f"DOM & Accessibility Tree Nodes with Containers:\n{elements_text}\n\n"
+        "Analyze the accessibility tree and decide the exact next action to make progress toward the goal."
     )
 
     # First attempt: GPT OSS 120B on Modal
