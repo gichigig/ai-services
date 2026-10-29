@@ -569,16 +569,17 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     # Build structured Accessibility Tree summary for the prompt with container context
     elements_summary = []
     for el in req.elements[:120]:
-        role_label = f'role="{el.role}"' if el.role else f'<{el.tag}>'
-        desc = f"[{el.id}] {role_label}"
+        role_str = el.role if el.role else el.tag
+        desc = f"[{el.id}] role=\"{role_str}\" <{el.tag}>"
         if el.name:
-            desc += f' name="{el.name}"'
-        if el.text and el.text != el.name:
-            cleaned_text = " ".join(el.text.split())[:80]
+            name_clean = " ".join(el.name.split())[:80]
+            desc += f' name="{name_clean}"'
+        if el.text and el.text.strip() != (el.name or '').strip():
+            cleaned_text = " ".join(el.text.split())[:60]
             desc += f' text="{cleaned_text}"'
         if el.placeholder:
             desc += f' placeholder="{el.placeholder}"'
-        if el.type and el.type != 'text':
+        if el.type and el.type not in ('text', ''):
             desc += f' type="{el.type}"'
         if el.href:
             desc += f' href="{el.href}"'
@@ -592,15 +593,19 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     system_prompt = (
         "You are an autonomous AI browser agent navigating Kenyan eCitizen government portals (BRS, NTSA, DCI).\n"
         "You analyze the live DOM & Accessibility Tree (roles, accessible names, containers) and decide the exact next action to make progress toward the user's task goal.\n\n"
+        "CRITICAL RULES:\n"
+        "- Every element in the tree has a W3C accessible role (button, link, textbox, combobox, etc.) and an accessible name.\n"
+        "- ONLY pick elements with role='button' or role='link' for click actions. NEVER pick a div, span, p, h1-h6, or any container element for clicking.\n"
+        "- Each element has a container context (e.g. 'In: Modal: MANUAL SERVICES' or 'In: Card: Business Registration Service') telling you where it lives in the page hierarchy.\n"
+        "- Use the container context to disambiguate: if the goal is Business Registration, click the button INSIDE the card for Business Registration, not a button inside Manual Services.\n\n"
         "Reasoning Guidelines:\n"
         "1. Prioritize elements matching the task goal (e.g. for Business Name Search, target 'Business Registration Service' or 'Name Search', NOT unrelated services like 'Manual Services' or 'Insolvency').\n"
-        "2. Always pick actionable leaf controls (buttons, links, inputs). Never click container wrappers if an inner button or link is available.\n"
-        "3. If an unwanted popup, public notice, or modal dialog is blocking the view, dismiss it by clicking its close button (e.g. '×' or close button in the modal header).\n"
-        "4. If input fields for the target form are visible on screen, choose action 'fill' with the appropriate value from Available Form Data.\n"
-        "5. If a submit, continue, proceed, or next button is visible after filling fields, choose action 'click' on that button.\n"
-        "6. If on a login or SMS OTP verification screen that requires user credentials, choose action 'wait'.\n"
-        "7. If reached a statutory fee / payment screen, choose action 'wait' for payment confirmation.\n"
-        "8. If an [ALERT / RE-INSPECTION] notice is present indicating that the previous click produced no response, do NOT repeat the same element. Inspect the Accessibility Tree and choose the actual actionable button or alternative control.\n\n"
+        "2. If an unwanted popup, public notice, or modal dialog is blocking the view, dismiss it by clicking its close button (role='button' with name containing 'Close', '×', or 'Dismiss').\n"
+        "3. If input fields (role='textbox') for the target form are visible, choose action 'fill' with the appropriate value from Available Form Data.\n"
+        "4. If a submit/continue/proceed/next button is visible after filling fields, choose action 'click' on that button.\n"
+        "5. If on a login or SMS OTP verification screen that requires user credentials, choose action 'wait'.\n"
+        "6. If reached a statutory fee / payment screen, choose action 'wait' for payment confirmation.\n"
+        "7. If an [ALERT / RE-INSPECTION] notice is present, the previous click FAILED. Do NOT repeat the same element_id. Choose a DIFFERENT actionable control.\n\n"
         "Respond ONLY with a valid JSON object matching this schema:\n"
         "{\n"
         '  "thought": "<your chain-of-thought reasoning analyzing the Accessibility Tree>",\n'
