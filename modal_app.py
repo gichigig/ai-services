@@ -534,6 +534,139 @@ async def grade_theory_endpoint(req: GradeTheoryRequest):
             "error_details": traceback.format_exc()
         }
 
+class EcitizenElement(BaseModel):
+    id: int
+    tag: str
+    text: Optional[str] = ""
+    aria: Optional[str] = ""
+    type: Optional[str] = ""
+    name: Optional[str] = ""
+    placeholder: Optional[str] = ""
+    role: Optional[str] = ""
+    href: Optional[str] = ""
+
+class EcitizenActionRequest(BaseModel):
+    url: str
+    page_title: Optional[str] = ""
+    task_goal: str
+    step_title: str
+    step_description: Optional[str] = ""
+    elements: List[EcitizenElement]
+    form_values: Optional[Dict[str, Any]] = None
+    last_error: Optional[str] = None
+    model_name: Optional[str] = "gpt_120b"
+
+@web_app.post("/ecitizen/decide-action")
+async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
+    """
+    Autonomous DOM Vision/Reasoning endpoint for eCitizen government portal navigation.
+    Uses GPT OSS 120B to decide which element to click, fill, or select based on live DOM perception.
+    """
+    import json
+    import re
+
+    # Build structured elements summary for the prompt
+    elements_summary = []
+    for el in req.elements[:65]:
+        desc = f"[{el.id}] <{el.tag}"
+        if el.type: desc += f' type="{el.type}"'
+        if el.name: desc += f' name="{el.name}"'
+        if el.placeholder: desc += f' placeholder="{el.placeholder}"'
+        if el.aria: desc += f' aria-label="{el.aria}"'
+        if el.href: desc += f' href="{el.href}"'
+        desc += ">"
+        if el.text:
+            cleaned_text = " ".join(el.text.split())[:80]
+            desc += f" {cleaned_text}"
+        elements_summary.append(desc)
+
+    elements_text = "\n".join(elements_summary) if elements_summary else "No interactive elements found."
+    form_text = json.dumps(req.form_values or {}, indent=2)
+
+    system_prompt = (
+        "You are an expert autonomous browser agent navigating the Kenyan eCitizen portal (e.g. BRS, NTSA, DCI). "
+        "Your task is to analyze the page state and visible interactive elements, then choose the single best element to interact with to accomplish the user's current step. "
+        "Respond ONLY with a valid JSON object matching this schema:\n"
+        "{\n"
+        '  "action": "click" | "fill" | "select" | "wait",\n'
+        '  "element_id": <int: id of the chosen element, or null if wait>,\n'
+        '  "fill_value": "<string or null>",\n'
+        '  "confidence": <float between 0.0 and 1.0>,\n'
+        '  "reason": "<short explanation>"\n'
+        "}"
+    )
+
+    user_prompt = (
+        f"Task Goal: {req.task_goal}\n"
+        f"Current Step: {req.step_title}\n"
+        f"Step Description: {req.step_description or 'Navigate and proceed'}\n"
+        f"Current Page URL: {req.url}\n"
+        f"Page Title: {req.page_title or 'eCitizen Portal'}\n"
+        f"Available Form Data to Fill:\n{form_text}\n\n"
+        f"Visible Interactive Elements on Page:\n{elements_text}\n\n"
+        "Analyze the available elements and decide the exact next action to make progress."
+    )
+
+    # First attempt: GPT OSS 120B on Modal
+    try:
+        import modal
+        GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
+        gpt_model = GptModelCls()
+        raw_res = await gpt_model.generate.remote.aio(
+            system_message=system_prompt,
+            user_message=user_prompt,
+            max_tokens=450
+        )
+        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if match:
+            decision = json.loads(match.group(0))
+            return {"status": "success", "source": "gpt_120b", "decision": decision}
+    except Exception as gpt_err:
+        print(f"GPT OSS 120B call note: {gpt_err}. Trying Qwen fallback...")
+
+    # Second attempt: QwenSmallModel fallback
+    try:
+        import modal
+        SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
+        small_model = SmallModelCls()
+        raw_res = await small_model.generate.remote.aio(
+            system_message=system_prompt,
+            user_message=user_prompt,
+            max_tokens=350
+        )
+        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if match:
+            decision = json.loads(match.group(0))
+            return {"status": "success", "source": "qwen_small", "decision": decision}
+    except Exception as qwen_err:
+        print(f"Qwen fallback note: {qwen_err}")
+
+    # Heuristic fallback if LLM container is spinning up
+    for el in req.elements:
+        t = (el.text or "").lower()
+        if any(w in t for w in ["search", "business", "application", "continue", "next", "submit", "apply", "brs"]):
+            return {
+                "status": "success",
+                "source": "heuristic_fallback",
+                "decision": {
+                    "action": "click",
+                    "element_id": el.id,
+                    "confidence": 0.8,
+                    "reason": f"Matched action intent keyword on '{el.text}'"
+                }
+            }
+
+    return {
+        "status": "partial",
+        "source": "fallback",
+        "decision": {
+            "action": "wait",
+            "element_id": None,
+            "confidence": 0.5,
+            "reason": "Waiting for page elements to stabilize"
+        }
+    }
+
 @app.function(image=image, min_containers=1, volumes={"/data": rag_volume})
 @modal.asgi_app()
 def fastapi_app():
