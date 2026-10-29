@@ -534,6 +534,134 @@ async def grade_theory_endpoint(req: GradeTheoryRequest):
             "error_details": traceback.format_exc()
         }
 
+class EcitizenIntentRequest(BaseModel):
+    prompt: str
+    available_services: Optional[List[Dict[str, Any]]] = None
+    user_context: Optional[Dict[str, Any]] = None
+    model_name: Optional[str] = "gpt_120b"
+
+@web_app.post("/ecitizen/parse-intent")
+async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
+    """
+    Parses a user's natural language command into structured eCitizen intent, target service,
+    and extracted form parameters using GPT OSS 120B on Modal.
+    """
+    import json
+    import re
+
+    system_prompt = (
+        "You are an expert natural language reasoning engine for Kenyan government services on eCitizen.\n"
+        "Your task is to analyze the user's natural language request, identify the exact target eCitizen government service, "
+        "extract all relevant form parameters (business names, phone numbers, locations/Huduma centres, durations, etc.), "
+        "and formulate a precise, actionable task goal for an autonomous browser navigation agent.\n\n"
+        "Known Government Services & Portal Mapping:\n"
+        "- 'business_name_search': Business Name Search & Reservation on Business Registration Service (BRS), URL: https://brs.ecitizen.go.ke\n"
+        "- 'business_name_registration': Business Name Registration (Sole Proprietorship / BN2) on BRS, URL: https://brs.ecitizen.go.ke\n"
+        "- 'good_conduct': Police Clearance Certificate on Directorate of Criminal Investigations (DCI), URL: https://dci.ecitizen.go.ke\n"
+        "- 'driving_license_renewal': 3-Year Smart Driving License Renewal on National Transport and Safety Authority (NTSA), URL: https://serviceportal.ntsa.go.ke\n"
+        "- 'pdl_test_booking': Provisional Driving License & Test Booking on NTSA, URL: https://serviceportal.ntsa.go.ke\n"
+        "- 'passport_application': New/Renewal Passport Application on Directorate of Immigration Services (DIS), URL: https://immigration.ecitizen.go.ke\n"
+        "- 'birth_certificate': Birth Certificate Replacement / Application on Civil Registration Services (CRS), URL: https://accounts.ecitizen.go.ke\n"
+        "- 'helb_student_loan': Higher Education Financing / HELB Student Loan, URL: https://hef.co.ke\n"
+        "- 'tax_compliance_certificate': KRA Tax Compliance Certificate (TCC), URL: https://itax.kra.go.ke\n\n"
+        "Instructions:\n"
+        "1. Identify the most specific service_id and portal_url.\n"
+        "2. Extract options dynamically:\n"
+        "   - businessName1: Primary proposed business or company name.\n"
+        "   - businessName2: Secondary or alternative proposed name if provided.\n"
+        "   - phoneNumber: Mobile phone number (e.g. 07XXXXXXXX or +254...).\n"
+        "   - selectedCentre: Preferred Huduma Centre or physical station (e.g. Nairobi GPO, Makadara, Eastleigh, Mombasa, Eldoret, Kisumu, Nakuru).\n"
+        "   - licenseDuration: e.g. '3-Year Smart Driving License (KES 3,050)' or '1-Year Driving License'.\n"
+        "   - vehicleClass: Driving license class if mentioned (e.g. Category B1/B2).\n"
+        "   - natureOfBusiness: Short description of business activity if mentioned.\n"
+        "3. Synthesize a concise task_goal for the browser agent (e.g. 'Search and reserve the business name Nairobi Cloud Labs on Business Registration Service').\n"
+        "4. Provide a detected_summary (e.g. 'Business Name Reservation for Nairobi Cloud Labs') and your reasoning.\n\n"
+        "Respond ONLY with a valid JSON object matching this schema:\n"
+        "{\n"
+        '  "service_id": "<one of the valid service IDs above>",\n'
+        '  "target_portal_url": "<exact url from above>",\n'
+        '  "task_goal": "<clear, actionable directive for browser navigation>",\n'
+        '  "detected_summary": "<short user-facing summary>",\n'
+        '  "options": {\n'
+        '    "businessName1": "<extracted or empty>",\n'
+        '    "businessName2": "<extracted or empty>",\n'
+        '    "phoneNumber": "<extracted or empty>",\n'
+        '    "selectedCentre": "<extracted or empty>",\n'
+        '    "licenseDuration": "<extracted or empty>",\n'
+        '    "vehicleClass": "<extracted or empty>",\n'
+        '    "natureOfBusiness": "<extracted or empty>"\n'
+        "  },\n"
+        '  "confidence": <float between 0.0 and 1.0>,\n'
+        '  "reasoning": "<chain-of-thought explanation of how the service and parameters were derived>"\n'
+        "}"
+    )
+
+    user_prompt = f"User Request: {req.prompt.strip()}"
+    if req.user_context:
+        user_prompt += f"\nUser Context: {json.dumps(req.user_context)}"
+
+    # Attempt 1: GPT OSS 120B on Modal
+    try:
+        import modal
+        GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
+        gpt_model = GptModelCls()
+        raw_res = await gpt_model.generate.remote.aio(
+            system_message=system_prompt,
+            user_message=user_prompt,
+            max_tokens=450
+        )
+        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if match:
+            decision = json.loads(match.group(0))
+            return {"status": "success", "source": "gpt_120b", "result": decision}
+    except Exception as gpt_err:
+        print(f"GPT OSS 120B intent parsing note: {gpt_err}. Trying Qwen fallback...")
+
+    # Attempt 2: QwenSmallModel fallback
+    try:
+        import modal
+        SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
+        small_model = SmallModelCls()
+        raw_res = await small_model.generate.remote.aio(
+            system_message=system_prompt,
+            user_message=user_prompt,
+            max_tokens=350
+        )
+        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if match:
+            decision = json.loads(match.group(0))
+            return {"status": "success", "source": "qwen_small", "result": decision}
+    except Exception as qwen_err:
+        print(f"Qwen intent parsing fallback note: {qwen_err}")
+
+    # Fallback to smart rule-based extraction if models unavailable
+    p = req.prompt.lower()
+    service_id = "business_name_search"
+    target_portal_url = "https://brs.ecitizen.go.ke"
+    if "good conduct" in p or "dci" in p or "clearance" in p:
+        service_id = "good_conduct"
+        target_portal_url = "https://dci.ecitizen.go.ke"
+    elif "driving" in p or "license" in p or "ntsa" in p:
+        service_id = "driving_license_renewal"
+        target_portal_url = "https://serviceportal.ntsa.go.ke"
+    elif "passport" in p:
+        service_id = "passport_application"
+        target_portal_url = "https://immigration.ecitizen.go.ke"
+
+    return {
+        "status": "partial",
+        "source": "fallback",
+        "result": {
+            "service_id": service_id,
+            "target_portal_url": target_portal_url,
+            "task_goal": f"Navigate and process {service_id} on eCitizen",
+            "detected_summary": f"Process {service_id}",
+            "options": {},
+            "confidence": 0.6,
+            "reasoning": "Heuristic fallback applied"
+        }
+    }
+
 class EcitizenElement(BaseModel):
     id: int
     tag: str
