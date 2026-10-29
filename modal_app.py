@@ -554,28 +554,57 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
     clean_prompt = req.prompt.strip()
     p_lower = clean_prompt.lower()
 
-    # 1. Determine if live web search is needed
-    search_keywords = [
+    # 1. Tier 1: Known Core Service Identification (Instant Fast Path)
+    core_service_keywords = [
+        "driving license", "driving licence", "driver license", "driver licence",
+        "renew dl", "pay dl", "pdl", "test booking", "good conduct", "police clearance",
+        "dci", "fingerprint", "name search", "business name", "register business",
+        "passport", "immigration", "birth certificate", "helb", "student loan",
+        "tax compliance", "tcc", "kra pin"
+    ]
+    is_known_core = any(k in p_lower for k in core_service_keywords)
+
+    # 2. Tier 2: Conversational Follow-Up State Bypass
+    followup_keywords = [
+        "start", "launch", "proceed", "yes", "run", "do it", "approved", "confirm",
+        "my number is", "phone number", "nairobi", "mombasa", "kisumu", "huduma",
+        "go ahead", "begin", "okay", "ok"
+    ]
+    is_followup = any(k in p_lower for k in followup_keywords) and len(clean_prompt.split()) < 10
+
+    # 3. Tier 3: Search Triggers (Informational or Long-Tail Service Discovery)
+    info_keywords = [
         "how much", "what is the fee", "what are the fees", "how long", "requirements", 
         "what documents", "cost", "tariff", "is it possible", "can i", "check online", 
-        "search web", "google", "taken", "available", "conflict", "trademark", "is the name"
+        "search web", "google", "where", "where do i", "which portal", "how do i", 
+        "how to apply", "steps to", "location", "huduma", "scope", "plan"
     ]
-    needs_web_search = any(k in p_lower for k in search_keywords) or clean_prompt.endswith("?")
+    is_info = any(k in p_lower for k in info_keywords) or clean_prompt.endswith("?")
+
+    # Dynamic Discovery Rule:
+    # Trigger live web search if user asks an informational/fee/portal question,
+    # OR requests a government service outside the 9 core services, provided it's not a short follow-up.
+    needs_dynamic_search = (is_info or (not is_known_core and not is_followup)) and len(clean_prompt.strip()) > 3
 
     web_search_text = ""
     web_sources = []
-    if needs_web_search:
+    if needs_dynamic_search:
         try:
             from llm_router import execute_web_search
-            q = re.sub(r'^(check|search|verify|find|tell me|google)\s+', '', clean_prompt, flags=re.IGNORECASE)
-            search_query = f"{q} eCitizen Kenya" if "ecitizen" not in q.lower() and "kenya" not in q.lower() else q
-            print(f"[EcitizenSearch] Executing live web search for: '{search_query}'")
+            clean_q = re.sub(r'^(check|search|verify|find|tell me|google|i want to|how to|apply for|pay for)\s+', '', clean_prompt, flags=re.IGNORECASE).strip()
+            search_query = f'site:ecitizen.go.ke OR site:go.ke "{clean_q}" portal requirements fee'
+            print(f"[EcitizenDiscovery] Executing targeted discovery search: '{search_query}'")
             raw_text, sources = await execute_web_search(search_query)
+            if not raw_text or len(raw_text.strip()) < 50:
+                fallback_query = f'{clean_q} eCitizen Kenya government portal requirements fee'
+                print(f"[EcitizenDiscovery] Executing broader discovery search: '{fallback_query}'")
+                raw_text, sources = await execute_web_search(fallback_query)
+
             if raw_text:
-                web_search_text = raw_text[:2200]
-                web_sources = sources[:4] if sources else []
+                web_search_text = raw_text[:2800]
+                web_sources = sources[:5] if sources else []
         except Exception as search_err:
-            print(f"[EcitizenSearch] Web search note: {search_err}")
+            print(f"[EcitizenDiscovery] Web search note: {search_err}")
 
     # 2. Format multi-turn conversation history
     history_context = ""
@@ -590,13 +619,17 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
             history_context = "Conversation History:\n" + "\n".join(formatted_history) + "\n\n"
 
     system_prompt = (
-        "You are an expert conversational AI Copilot for Kenyan eCitizen government portals (BRS, NTSA, DCI, Immigration).\n"
-        "You can chat conversationally, answer government questions using live web search results, ask clarifying questions before execution, or trigger live browser automation when all required details are present.\n\n"
+        "You are an expert conversational AI Copilot for Kenyan eCitizen government portals.\n"
+        "You have universal dynamic coverage over all 5,000+ digitized government services across ministries, departments, and agencies.\n"
+        "When real-time verified search results are provided in <WEB_SEARCH_RESULTS>:\n"
+        "- Discover the exact official government portal URL (must end with .go.ke or contain ecitizen.go.ke). If specific subdomain is unknown, default to 'https://accounts.ecitizen.go.ke'.\n"
+        "- Extract the official statutory fee (KES), responsible agency/department, and required documents/prerequisites.\n"
+        "- When the user wants to execute a government service outside the 9 core services, synthesize a dynamic 5-milestone service DAG in 'dynamic_service'.\n\n"
         "Decision Modes (Field 'type'):\n"
-        "1. 'info': Use when the user is asking an informational question about government requirements, fees, rules, or asking to check something online. Answer the question thoroughly in 'message' using the provided web search context or your knowledge. Do NOT launch the browser (ready_to_launch=false).\n"
-        "2. 'clarification': Use when the user wants to execute a government service (e.g. business registration, good conduct, driving license renewal) but has NOT provided necessary details (e.g. missing proposed business name for BRS, missing preferred Huduma station). Ask clear, friendly follow-up questions in 'message' to gather the missing details (ready_to_launch=false).\n"
-        "3. 'action_ready': Use ONLY when you have sufficient details (e.g., at least the primary proposed business name for BRS, or user explicitly commands 'proceed' / 'start' / 'run') to launch the automated browser navigation on eCitizen. Summarize what you will do in 'message' and set ready_to_launch=true.\n\n"
-        "Known Government Services & Portal Mapping:\n"
+        "1. 'info': Use when the user is asking an informational question about requirements, fees, rules, or portal locations. Answer thoroughly in 'message' with source citations. Do NOT launch the browser (ready_to_launch=false).\n"
+        "2. 'clarification': Use when the user wants to execute a service but has NOT provided necessary details (e.g. proposed name, national ID, preferred station). Ask clear follow-up questions in 'message' (ready_to_launch=false).\n"
+        "3. 'action_ready': Use ONLY when you have sufficient details or the user commanded 'proceed' / 'start' / 'run' to launch browser automation on eCitizen. Summarize in 'message' and set ready_to_launch=true.\n\n"
+        "Known Government Core Services:\n"
         "- 'business_name_search': Business Name Search & Reservation on Business Registration Service (BRS), URL: https://brs.ecitizen.go.ke\n"
         "- 'business_name_registration': Business Name Registration (Sole Proprietorship / BN2) on BRS, URL: https://brs.ecitizen.go.ke\n"
         "- 'good_conduct': Police Clearance Certificate on Directorate of Criminal Investigations (DCI), URL: https://dci.ecitizen.go.ke\n"
@@ -606,13 +639,17 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
         "- 'birth_certificate': Birth Certificate Replacement / Application on Civil Registration Services (CRS), URL: https://accounts.ecitizen.go.ke\n"
         "- 'helb_student_loan': Higher Education Financing / HELB Student Loan, URL: https://hef.co.ke\n"
         "- 'tax_compliance_certificate': KRA Tax Compliance Certificate (TCC), URL: https://itax.kra.go.ke\n\n"
+        "For any OTHER service discovered via search (e.g. Marriage Certificate, NEMA Waste Permit, Mining License, Nairobi County Business Permit), generate 'dynamic_service' and an official .go.ke target_portal_url.\n\n"
         "Respond ONLY with a valid JSON object matching this schema:\n"
         "{\n"
         '  "type": "clarification" | "info" | "action_ready",\n'
         '  "message": "<Conversational answer or follow-up question in friendly, professional tone>",\n'
-        '  "service_id": "<matched service ID from list above, or empty string>",\n'
-        '  "target_portal_url": "<matched URL, or empty string>",\n'
-        '  "task_goal": "<clear, actionable directive for browser agent if action_ready, else empty>",\n'
+        '  "service_id": "<core service ID or dynamic slug like marriage_certificate>",\n'
+        '  "service_title": "<Full official service title>",\n'
+        '  "department": "<Government Agency or Ministry>",\n'
+        '  "target_portal_url": "<Official .go.ke or ecitizen.go.ke URL>",\n'
+        '  "fee_kes": "<Statutory fee, e.g. KES 3,900>",\n'
+        '  "task_goal": "<clear, actionable directive for browser agent>",\n'
         '  "detected_summary": "<short 2-5 word summary>",\n'
         '  "options": {\n'
         '    "businessName1": "<extracted primary proposed name or empty>",\n'
@@ -623,7 +660,22 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
         '    "vehicleClass": "<extracted vehicle class or empty>",\n'
         '    "natureOfBusiness": "<extracted nature of business or empty>"\n'
         "  },\n"
-        '  "missing_fields": ["<list of any required fields still missing, e.g. businessName1>"],\n'
+        '  "dynamic_service": {\n'
+        '    "title": "<Discovered title>",\n'
+        '    "shortName": "<Short name>",\n'
+        '    "department": "<Discovered agency>",\n'
+        '    "portalUrl": "<Discovered official URL>",\n'
+        '    "feeKes": "<Statutory fee>",\n'
+        '    "requirements": ["<req 1>", "<req 2>"],\n'
+        '    "steps": [\n'
+        '      {"stepNumber": 1, "title": "Portal Authentication", "description": "Authenticate via eCitizen credentials."},\n'
+        '      {"stepNumber": 2, "title": "Service Selection", "description": "Access designated department menu."},\n'
+        '      {"stepNumber": 3, "title": "Application Entry", "description": "Fill applicant details and mandatory fields."},\n'
+        '      {"stepNumber": 4, "title": "Document Verification", "description": "Upload required attachments."},\n'
+        '      {"stepNumber": 5, "title": "Fee Settlement", "description": "Authorize government payment via M-Pesa."}\n'
+        '    ]\n'
+        '  },\n'
+        '  "missing_fields": ["<list of any required fields still missing>"],\n'
         '  "ready_to_launch": <boolean: true only if type is action_ready>,\n'
         '  "confidence": <float between 0.0 and 1.0>,\n'
         '  "reasoning": "<chain-of-thought explanation>"\n'
