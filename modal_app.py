@@ -536,6 +536,7 @@ async def grade_theory_endpoint(req: GradeTheoryRequest):
 
 class EcitizenIntentRequest(BaseModel):
     prompt: str
+    history: Optional[List[Dict[str, Any]]] = None
     available_services: Optional[List[Dict[str, Any]]] = None
     user_context: Optional[Dict[str, Any]] = None
     model_name: Optional[str] = "gpt_120b"
@@ -543,17 +544,58 @@ class EcitizenIntentRequest(BaseModel):
 @web_app.post("/ecitizen/parse-intent")
 async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
     """
-    Parses a user's natural language command into structured eCitizen intent, target service,
-    and extracted form parameters using GPT OSS 120B on Modal.
+    Conversational Multi-Turn AI Intent, Clarification, and Web Search engine for eCitizen.
+    Uses GPT OSS 120B on Modal and live web search to answer questions or ask clarifying
+    follow-up questions before initiating autonomous browser automation.
     """
     import json
     import re
 
+    clean_prompt = req.prompt.strip()
+    p_lower = clean_prompt.lower()
+
+    # 1. Determine if live web search is needed
+    search_keywords = [
+        "how much", "what is the fee", "what are the fees", "how long", "requirements", 
+        "what documents", "cost", "tariff", "is it possible", "can i", "check online", 
+        "search web", "google", "taken", "available", "conflict", "trademark", "is the name"
+    ]
+    needs_web_search = any(k in p_lower for k in search_keywords) or clean_prompt.endswith("?")
+
+    web_search_text = ""
+    web_sources = []
+    if needs_web_search:
+        try:
+            from llm_router import execute_web_search
+            q = re.sub(r'^(check|search|verify|find|tell me|google)\s+', '', clean_prompt, flags=re.IGNORECASE)
+            search_query = f"{q} eCitizen Kenya" if "ecitizen" not in q.lower() and "kenya" not in q.lower() else q
+            print(f"[EcitizenSearch] Executing live web search for: '{search_query}'")
+            raw_text, sources = await execute_web_search(search_query)
+            if raw_text:
+                web_search_text = raw_text[:2200]
+                web_sources = sources[:4] if sources else []
+        except Exception as search_err:
+            print(f"[EcitizenSearch] Web search note: {search_err}")
+
+    # 2. Format multi-turn conversation history
+    history_context = ""
+    if req.history:
+        formatted_history = []
+        for h in req.history[-6:]:
+            role = h.get("sender") or h.get("role") or "user"
+            content = h.get("text") or h.get("content") or ""
+            if content:
+                formatted_history.append(f"{role.capitalize()}: {content}")
+        if formatted_history:
+            history_context = "Conversation History:\n" + "\n".join(formatted_history) + "\n\n"
+
     system_prompt = (
-        "You are an expert natural language reasoning engine for Kenyan government services on eCitizen.\n"
-        "Your task is to analyze the user's natural language request, identify the exact target eCitizen government service, "
-        "extract all relevant form parameters (business names, phone numbers, locations/Huduma centres, durations, etc.), "
-        "and formulate a precise, actionable task goal for an autonomous browser navigation agent.\n\n"
+        "You are an expert conversational AI Copilot for Kenyan eCitizen government portals (BRS, NTSA, DCI, Immigration).\n"
+        "You can chat conversationally, answer government questions using live web search results, ask clarifying questions before execution, or trigger live browser automation when all required details are present.\n\n"
+        "Decision Modes (Field 'type'):\n"
+        "1. 'info': Use when the user is asking an informational question about government requirements, fees, rules, or asking to check something online. Answer the question thoroughly in 'message' using the provided web search context or your knowledge. Do NOT launch the browser (ready_to_launch=false).\n"
+        "2. 'clarification': Use when the user wants to execute a government service (e.g. business registration, good conduct, driving license renewal) but has NOT provided necessary details (e.g. missing proposed business name for BRS, missing preferred Huduma station). Ask clear, friendly follow-up questions in 'message' to gather the missing details (ready_to_launch=false).\n"
+        "3. 'action_ready': Use ONLY when you have sufficient details (e.g., at least the primary proposed business name for BRS, or user explicitly commands 'proceed' / 'start' / 'run') to launch the automated browser navigation on eCitizen. Summarize what you will do in 'message' and set ready_to_launch=true.\n\n"
         "Known Government Services & Portal Mapping:\n"
         "- 'business_name_search': Business Name Search & Reservation on Business Registration Service (BRS), URL: https://brs.ecitizen.go.ke\n"
         "- 'business_name_registration': Business Name Registration (Sole Proprietorship / BN2) on BRS, URL: https://brs.ecitizen.go.ke\n"
@@ -564,39 +606,32 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
         "- 'birth_certificate': Birth Certificate Replacement / Application on Civil Registration Services (CRS), URL: https://accounts.ecitizen.go.ke\n"
         "- 'helb_student_loan': Higher Education Financing / HELB Student Loan, URL: https://hef.co.ke\n"
         "- 'tax_compliance_certificate': KRA Tax Compliance Certificate (TCC), URL: https://itax.kra.go.ke\n\n"
-        "Instructions:\n"
-        "1. Identify the most specific service_id and portal_url.\n"
-        "2. Extract options dynamically:\n"
-        "   - businessName1: Primary proposed business or company name.\n"
-        "   - businessName2: Secondary or alternative proposed name if provided.\n"
-        "   - phoneNumber: Mobile phone number (e.g. 07XXXXXXXX or +254...).\n"
-        "   - selectedCentre: Preferred Huduma Centre or physical station (e.g. Nairobi GPO, Makadara, Eastleigh, Mombasa, Eldoret, Kisumu, Nakuru).\n"
-        "   - licenseDuration: e.g. '3-Year Smart Driving License (KES 3,050)' or '1-Year Driving License'.\n"
-        "   - vehicleClass: Driving license class if mentioned (e.g. Category B1/B2).\n"
-        "   - natureOfBusiness: Short description of business activity if mentioned.\n"
-        "3. Synthesize a concise task_goal for the browser agent (e.g. 'Search and reserve the business name Nairobi Cloud Labs on Business Registration Service').\n"
-        "4. Provide a detected_summary (e.g. 'Business Name Reservation for Nairobi Cloud Labs') and your reasoning.\n\n"
         "Respond ONLY with a valid JSON object matching this schema:\n"
         "{\n"
-        '  "service_id": "<one of the valid service IDs above>",\n'
-        '  "target_portal_url": "<exact url from above>",\n'
-        '  "task_goal": "<clear, actionable directive for browser navigation>",\n'
-        '  "detected_summary": "<short user-facing summary>",\n'
+        '  "type": "clarification" | "info" | "action_ready",\n'
+        '  "message": "<Conversational answer or follow-up question in friendly, professional tone>",\n'
+        '  "service_id": "<matched service ID from list above, or empty string>",\n'
+        '  "target_portal_url": "<matched URL, or empty string>",\n'
+        '  "task_goal": "<clear, actionable directive for browser agent if action_ready, else empty>",\n'
+        '  "detected_summary": "<short 2-5 word summary>",\n'
         '  "options": {\n'
-        '    "businessName1": "<extracted or empty>",\n'
-        '    "businessName2": "<extracted or empty>",\n'
-        '    "phoneNumber": "<extracted or empty>",\n'
-        '    "selectedCentre": "<extracted or empty>",\n'
-        '    "licenseDuration": "<extracted or empty>",\n'
-        '    "vehicleClass": "<extracted or empty>",\n'
-        '    "natureOfBusiness": "<extracted or empty>"\n'
+        '    "businessName1": "<extracted primary proposed name or empty>",\n'
+        '    "businessName2": "<extracted alternative proposed name or empty>",\n'
+        '    "phoneNumber": "<extracted phone or empty>",\n'
+        '    "selectedCentre": "<extracted Huduma Centre or empty>",\n'
+        '    "licenseDuration": "<extracted duration or empty>",\n'
+        '    "vehicleClass": "<extracted vehicle class or empty>",\n'
+        '    "natureOfBusiness": "<extracted nature of business or empty>"\n'
         "  },\n"
+        '  "missing_fields": ["<list of any required fields still missing, e.g. businessName1>"],\n'
+        '  "ready_to_launch": <boolean: true only if type is action_ready>,\n'
         '  "confidence": <float between 0.0 and 1.0>,\n'
-        '  "reasoning": "<chain-of-thought explanation of how the service and parameters were derived>"\n'
+        '  "reasoning": "<chain-of-thought explanation>"\n'
         "}"
     )
 
-    user_prompt = f"User Request: {req.prompt.strip()}"
+    search_block = f"\n<WEB_SEARCH_RESULTS>\n{web_search_text}\n</WEB_SEARCH_RESULTS>\n" if web_search_text else ""
+    user_prompt = f"{history_context}Current User Message: {clean_prompt}\n{search_block}"
     if req.user_context:
         user_prompt += f"\nUser Context: {json.dumps(req.user_context)}"
 
@@ -608,11 +643,14 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
         raw_res = await gpt_model.generate.remote.aio(
             system_message=system_prompt,
             user_message=user_prompt,
-            max_tokens=450
+            max_tokens=550
         )
         match = re.search(r'\{.*\}', raw_res, re.DOTALL)
         if match:
             decision = json.loads(match.group(0))
+            if web_sources:
+                decision["search_performed"] = True
+                decision["search_sources"] = web_sources
             return {"status": "success", "source": "gpt_120b", "result": decision}
     except Exception as gpt_err:
         print(f"GPT OSS 120B intent parsing note: {gpt_err}. Trying Qwen fallback...")
@@ -625,40 +663,59 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
         raw_res = await small_model.generate.remote.aio(
             system_message=system_prompt,
             user_message=user_prompt,
-            max_tokens=350
+            max_tokens=450
         )
         match = re.search(r'\{.*\}', raw_res, re.DOTALL)
         if match:
             decision = json.loads(match.group(0))
+            if web_sources:
+                decision["search_performed"] = True
+                decision["search_sources"] = web_sources
             return {"status": "success", "source": "qwen_small", "result": decision}
     except Exception as qwen_err:
         print(f"Qwen intent parsing fallback note: {qwen_err}")
 
-    # Fallback to smart rule-based extraction if models unavailable
-    p = req.prompt.lower()
+    # Fallback response
+    p = clean_prompt.lower()
     service_id = "business_name_search"
     target_portal_url = "https://brs.ecitizen.go.ke"
-    if "good conduct" in p or "dci" in p or "clearance" in p:
-        service_id = "good_conduct"
-        target_portal_url = "https://dci.ecitizen.go.ke"
-    elif "driving" in p or "license" in p or "ntsa" in p:
-        service_id = "driving_license_renewal"
-        target_portal_url = "https://serviceportal.ntsa.go.ke"
-    elif "passport" in p:
-        service_id = "passport_application"
-        target_portal_url = "https://immigration.ecitizen.go.ke"
+    is_q = clean_prompt.endswith("?") or any(w in p for w in ["what", "how", "fee", "cost", "requirements"])
+
+    if is_q:
+        fallback_msg = "eCitizen provides various online government services including Business Registration (KES 150 search fee), Police Clearance / Good Conduct (KES 1,050), and Driving License renewals. Please state the service you want to apply for."
+        return {
+            "status": "success",
+            "source": "fallback",
+            "result": {
+                "type": "info",
+                "message": fallback_msg,
+                "service_id": "",
+                "target_portal_url": "",
+                "task_goal": "",
+                "detected_summary": "General Inquiry",
+                "options": {},
+                "missing_fields": [],
+                "ready_to_launch": False,
+                "confidence": 0.7,
+                "reasoning": "Heuristic fallback info response"
+            }
+        }
 
     return {
         "status": "partial",
         "source": "fallback",
         "result": {
+            "type": "action_ready",
+            "message": "Ready to navigate eCitizen for your request. Click 'Start Autopilot' to launch.",
             "service_id": service_id,
             "target_portal_url": target_portal_url,
             "task_goal": f"Navigate and process {service_id} on eCitizen",
             "detected_summary": f"Process {service_id}",
             "options": {},
+            "missing_fields": [],
+            "ready_to_launch": True,
             "confidence": 0.6,
-            "reasoning": "Heuristic fallback applied"
+            "reasoning": "Heuristic fallback action ready"
         }
     }
 
