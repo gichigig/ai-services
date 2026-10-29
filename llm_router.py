@@ -85,7 +85,7 @@ class QwenSmallModel:
         return final_output.outputs[0].text.strip()
 
 
-@app.cls(gpu="H100", image=vllm_image, timeout=1200, min_containers=0)
+@app.cls(gpu="H200", image=vllm_image, timeout=1200, min_containers=1)
 @modal.concurrent(max_inputs=20)
 class GptOss120bModel:
     """
