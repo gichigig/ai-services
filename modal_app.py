@@ -798,7 +798,8 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         "5. If on a login or SMS OTP verification screen that requires user credentials, choose action 'wait'.\n"
         "6. If reached a statutory fee / payment screen, choose action 'wait' for payment confirmation.\n"
         "7. If an [ALERT / RE-INSPECTION] notice is present, the previous click FAILED. Do NOT repeat the same element_id. Choose a DIFFERENT actionable control.\n"
-        "8. If the current URL is completely off-target (e.g. still on landing portal when target is BRS), you can use action 'navigate' with target_url='https://brs.ecitizen.go.ke'.\n\n"
+        "8. If the current URL is completely off-target (e.g. still on landing portal when target is BRS), you can use action 'navigate' with target_url='https://brs.ecitizen.go.ke'.\n"
+        "9. Agency SSO Landing Screens (e.g. NTSA serviceportal.ntsa.go.ke): If you are on an agency landing page with a 'Sign in' button and text stating 'Use your Ecitizen login credentials', choose action 'click' on the 'Sign in' button to initiate the SSO handshake into the agency portal.\n\n"
         "Respond ONLY with a valid JSON object matching this schema:\n"
         "{\n"
         '  "thought": "<your chain-of-thought reasoning analyzing current page context and previous actions>",\n'
@@ -860,6 +861,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         print(f"Qwen fallback note: {qwen_err}")
 
     # Heuristic fallback if LLM container is spinning up
+    if "serviceportal.ntsa" in req.url or "ntsa.go.ke" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if any(w in combined for w in ["sign in", "signin", "log in", "login"]):
+                return {
+                    "status": "success",
+                    "source": "heuristic_ntsa_sso",
+                    "decision": {
+                        "thought": "Detected NTSA landing page. Clicking 'Sign in' to initiate eCitizen SSO handshake.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "NTSA SSO Login",
+                        "reason": "Clicking 'Sign in' to authenticate via eCitizen SSO"
+                    }
+                }
+
     for el in req.elements:
         t = (el.text or "").lower()
         if any(w in t for w in ["search", "business", "application", "continue", "next", "submit", "apply", "brs"]):
