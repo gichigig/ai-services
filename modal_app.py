@@ -550,10 +550,11 @@ class EcitizenActionRequest(BaseModel):
     url: str
     page_title: Optional[str] = ""
     task_goal: str
-    step_title: str
+    step_title: Optional[str] = "Autonomous Navigation"
     step_description: Optional[str] = ""
     elements: List[EcitizenElement]
     form_values: Optional[Dict[str, Any]] = None
+    action_history: Optional[List[Dict[str, Any]]] = None
     last_error: Optional[str] = None
     model_name: Optional[str] = "gpt_120b"
 
@@ -590,6 +591,12 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     elements_text = "\n".join(elements_summary) if elements_summary else "No accessible elements found."
     form_text = json.dumps(req.form_values or {}, indent=2)
 
+    history_lines = []
+    if req.action_history:
+        for h in req.action_history[-6:]:
+            history_lines.append(f"- Turn {h.get('turn', '?')}: {str(h.get('action', '')).upper()} [{h.get('element', '')}] -> Status: {h.get('status', 'executed')} ({h.get('reason', '')})")
+    history_text = "\n".join(history_lines) if history_lines else "None yet. Starting fresh from current page."
+
     system_prompt = (
         "You are an autonomous AI browser agent navigating Kenyan eCitizen government portals (BRS, NTSA, DCI).\n"
         "You analyze the live DOM & Accessibility Tree (roles, accessible names, containers) and decide the exact next action to make progress toward the user's task goal.\n\n"
@@ -605,15 +612,18 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         "4. If a submit/continue/proceed/next button is visible after filling fields, choose action 'click' on that button.\n"
         "5. If on a login or SMS OTP verification screen that requires user credentials, choose action 'wait'.\n"
         "6. If reached a statutory fee / payment screen, choose action 'wait' for payment confirmation.\n"
-        "7. If an [ALERT / RE-INSPECTION] notice is present, the previous click FAILED. Do NOT repeat the same element_id. Choose a DIFFERENT actionable control.\n\n"
+        "7. If an [ALERT / RE-INSPECTION] notice is present, the previous click FAILED. Do NOT repeat the same element_id. Choose a DIFFERENT actionable control.\n"
+        "8. If the current URL is completely off-target (e.g. still on landing portal when target is BRS), you can use action 'navigate' with target_url='https://brs.ecitizen.go.ke'.\n\n"
         "Respond ONLY with a valid JSON object matching this schema:\n"
         "{\n"
-        '  "thought": "<your chain-of-thought reasoning analyzing the Accessibility Tree>",\n'
-        '  "action": "click" | "fill" | "select" | "wait",\n'
-        '  "element_id": <int: id of the chosen element, or null if wait>,\n'
+        '  "thought": "<your chain-of-thought reasoning analyzing current page context and previous actions>",\n'
+        '  "action": "click" | "fill" | "select" | "navigate" | "wait" | "done",\n'
+        '  "element_id": <int: id of the chosen element, or null if wait/navigate/done>,\n'
         '  "fill_value": "<string to fill, or null>",\n'
+        '  "target_url": "<url string to navigate to, or null>",\n'
+        '  "milestone": "<short 2-4 word status, e.g. Dismiss Notice, Select BRS, Enter Name, Payment Checkpoint>",\n'
         '  "confidence": <float between 0.0 and 1.0>,\n'
-        '  "reason": "<short user-facing explanation of the action>"\n'
+        '  "reason": "<short user-facing explanation of what you are doing>"\n'
         "}"
     )
 
@@ -621,14 +631,13 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
 
     user_prompt = (
         f"Task Goal: {req.task_goal}\n"
-        f"Current Step: {req.step_title}\n"
-        f"Step Description: {req.step_description or 'Analyze Accessibility Tree and proceed autonomously'}\n"
         f"Current Page URL: {req.url}\n"
         f"Page Title: {req.page_title or 'eCitizen Portal'}\n"
-        f"{alert_text}"
+        f"{alert_text}\n"
+        f"Recent Action History:\n{history_text}\n\n"
         f"Available Form Data to Fill:\n{form_text}\n\n"
-        f"DOM & Accessibility Tree Nodes with Containers:\n{elements_text}\n\n"
-        "Analyze the accessibility tree and decide the exact next action to make progress toward the goal."
+        f"Live DOM & Accessibility Tree Nodes with Containers:\n{elements_text}\n\n"
+        "Analyze the accessibility tree, review your history, and decide the exact next action to make progress toward the goal."
     )
 
     # First attempt: GPT OSS 120B on Modal
