@@ -1,12 +1,103 @@
 """
 Assignment Solver Module
-Synthesizes structured academic solutions for student assignments, CATs, and project reports.
+Synthesizes structured academic solutions for student assignments, CATs, and project reports
+powered by GPT OSS (GptOss120bModel on Modal).
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import datetime
+import json
 
 class AssignmentSolver:
+    @classmethod
+    async def solve_assignment_async(
+        cls,
+        unit_code: str,
+        unit_name: str,
+        assignment_title: str,
+        student_name: str = "Student Name",
+        admission_no: str = "ADM/2026/0894",
+        custom_instructions: str = "",
+        custom_prompt: str = "",
+        model_name: str = "gpt_120b"
+    ) -> Dict[str, Any]:
+        """
+        Synthesizes an academic-grade assignment solution using GPT OSS.
+        Falls back to comprehensive academic structured synthesis if model connection is unavailable.
+        """
+        now = datetime.datetime.now()
+        date_str = now.strftime("%B %d, %Y")
+        full_subject = f"{unit_code}: {unit_name}".strip(": ")
+        active_prompt = custom_prompt or custom_instructions
+
+        # Attempt to synthesize with GPT OSS on Modal
+        try:
+            import modal
+            GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
+            gpt_model = GptModelCls()
+            
+            system_prompt = (
+                "You are an elite university professor, researcher, and academic author. "
+                "Synthesize a rigorous, publication-grade academic solution for the given coursework. "
+                "Output ONLY a valid JSON object matching the following structure:\n"
+                "{\n"
+                '  "sections": [\n'
+                '    { "type": "heading", "title": "1. Executive Summary & Problem Overview", "content": "..." },\n'
+                '    { "type": "question_block", "q_number": "Question 1", "question": "...", "solution": "..." },\n'
+                '    { "type": "question_block", "q_number": "Question 2", "question": "...", "code": "...", "solution": "..." },\n'
+                '    { "type": "question_block", "q_number": "Question 3", "question": "...", "solution": "..." },\n'
+                '    { "type": "heading", "title": "4. Conclusion & Academic References", "content": "..." }\n'
+                '  ]\n'
+                "}"
+            )
+            
+            user_prompt = (
+                f"Course Unit: {full_subject}\n"
+                f"Assignment Title: {assignment_title}\n"
+                f"Student: {student_name} ({admission_no})\n"
+                f"Coursework Prompt & Details: {active_prompt or 'Complete comprehensive analysis, mathematical/technical formulations, code algorithms, and architectural trade-offs.'}\n\n"
+                "Provide an exceptionally detailed, rigorous, step-by-step academic solution."
+            )
+            
+            raw_response = await gpt_model.generate.remote.aio(
+                system_message=system_prompt,
+                user_message=user_prompt,
+                temperature=0.6,
+                max_tokens=4096
+            )
+            
+            cleaned = raw_response.strip()
+            if "```json" in cleaned:
+                cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+            elif "```" in cleaned:
+                cleaned = cleaned.split("```")[1].split("```")[0].strip()
+                
+            parsed = json.loads(cleaned)
+            if "sections" in parsed and isinstance(parsed["sections"], list) and len(parsed["sections"]) > 0:
+                return {
+                    "unit_code": unit_code,
+                    "unit_name": unit_name,
+                    "assignment_title": assignment_title,
+                    "student_name": student_name,
+                    "admission_no": admission_no,
+                    "date": date_str,
+                    "sections": parsed["sections"],
+                    "generated_by": "GPT OSS 120B (OpenAI / H200 SXM)"
+                }
+        except Exception as e:
+            print(f"[AssignmentSolver] GPT OSS remote generation note: {e}. Utilizing structured academic synthesis engine.")
+
+        # Fallback to local structured academic synthesis
+        return cls.solve_assignment(
+            unit_code=unit_code,
+            unit_name=unit_name,
+            assignment_title=assignment_title,
+            student_name=student_name,
+            admission_no=admission_no,
+            custom_instructions=custom_instructions,
+            custom_prompt=custom_prompt
+        )
+
     @staticmethod
     def solve_assignment(
         unit_code: str,
@@ -118,5 +209,6 @@ class AssignmentSolver:
             "student_name": student_name,
             "admission_no": admission_no,
             "date": date_str,
-            "sections": sections
+            "sections": sections,
+            "generated_by": "Academic Knowledge Engine"
         }

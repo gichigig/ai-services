@@ -228,14 +228,15 @@ class AutonomousLMSAgent:
                 await emit(4, "AI Synthesis & PDF Typesetting", "AI Brain synthesizing structured academic solutions and rendering PDF...", "active")
                 await asyncio.sleep(1.2)
 
-                # Solve assignment using extracted questions
-                solution_data = AssignmentSolver.solve_assignment(
+                # Solve assignment using extracted questions powered by GPT OSS (GptOss120bModel)
+                solution_data = await AssignmentSolver.solve_assignment_async(
                     unit_code=unit_code,
                     unit_name=unit_name,
                     assignment_title=detected_title,
                     student_name=student_name,
                     admission_no=admission_no,
-                    custom_prompt=extracted_prompt if extracted_prompt.strip() else None
+                    custom_prompt=extracted_prompt if extracted_prompt.strip() else None,
+                    model_name="gpt_120b"
                 )
 
                 # Generate academic PDF

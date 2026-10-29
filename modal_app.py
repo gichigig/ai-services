@@ -10,20 +10,36 @@ app = modal.App("video-analyzer-service")
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("libgl1", "libglib2.0-0", "ffmpeg", "libsndfile1", "python3-dev", "build-essential")
+    .run_commands(
+        "pip install --upgrade 'setuptools<70.0.0' wheel",
+        "pip install --no-build-isolation openai-whisper"
+    )
     .pip_install_from_requirements(os.path.join(os.path.dirname(__file__), "requirements.txt"))
-    .run_commands("playwright install --with-deps chromium")
-    .add_local_python_source("video_analyzer", "audio_analyzer", "llm_router", "rag_search", "timetable_extractor")
+    .run_commands(
+        "pip install --upgrade 'setuptools<70.0.0'",
+        "playwright install --with-deps chromium"
+    )
+    .add_local_python_source("video_analyzer", "audio_analyzer", "llm_router", "rag_search", "timetable_extractor", "quiz_generator", "document_analyzer", "agent")
 )
 
 # Define the persistent volume for RAG storage
 rag_volume = modal.Volume.from_name("bruv-schools-rag-data", create_if_missing=True)
 
+from typing import Optional, List, Dict, Any
+
 class VideoAnalysisRequest(BaseModel):
     media_id: str
     video_url: str
     caption: str = ""
+    webhook_url: Optional[str] = "https://school.ishinadwelly.com/api/internal/media/analysis-complete"
 
-from typing import Optional
+class ModerationRequest(BaseModel):
+    video_url: str
+
+class ChatAttachment(BaseModel):
+    name: str = "attachment"
+    mime_type: Optional[str] = None
+    data: str = ""
 
 class QuestionRequest(BaseModel):
     student_id: Optional[str] = None
@@ -32,6 +48,11 @@ class QuestionRequest(BaseModel):
     user_memory: Optional[dict] = None
     selected_model: Optional[str] = "small"
     use_reasoning: Optional[bool] = False
+    attachments: Optional[List[ChatAttachment]] = None
+
+class TopicRequest(BaseModel):
+    first_question: str
+    first_answer: Optional[str] = ""
 
 class DocumentIndexRequest(BaseModel):
     file_url: str
@@ -39,7 +60,7 @@ class DocumentIndexRequest(BaseModel):
     year: str = ""
 
 @app.function(image=image, timeout=600, gpu="A10G")
-def process_video_modal(media_id: str, video_url: str, caption: str = ""):
+def process_video_modal(media_id: str, video_url: str, caption: str = "", webhook_url: str = "https://school.ishinadwelly.com/api/internal/media/analysis-complete"):
     """
     Background task that downloads the video, runs inference, and sends results to Kotlin backend.
     Runs entirely on Modal.
@@ -49,18 +70,37 @@ def process_video_modal(media_id: str, video_url: str, caption: str = ""):
     from audio_analyzer import extract_and_analyze_audio
     import requests
 
-    # Note: If running a local Kotlin backend, KOTLIN_BACKEND_WEBHOOK needs to be a public URL (e.g. via ngrok)
-    # because Modal runs in the cloud and cannot reach your localhost.
-    KOTLIN_BACKEND_WEBHOOK = os.getenv("KOTLIN_BACKEND_WEBHOOK", "http://localhost:8080/api/internal/media/analysis-complete")
+    target_webhook = webhook_url or os.getenv("KOTLIN_BACKEND_WEBHOOK") or "https://school.ishinadwelly.com/api/internal/media/analysis-complete"
+    if "localhost" in target_webhook:
+        target_webhook = "https://school.ishinadwelly.com/api/internal/media/analysis-complete"
+
+    import tempfile
+    temp_video_path = None
 
     try:
         print(f"Starting analysis for media_id: {media_id}")
+        if video_url.startswith("/"):
+            video_url = f"https://school.ishinadwelly.com{video_url}"
+
+        # Download video to local temp file for reliable frame seeking and fast audio analysis
+        temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        temp_video_path = temp_file.name
+        temp_file.close()
+
+        print(f"Downloading video {media_id} from {video_url} to {temp_video_path}")
+        dl_resp = requests.get(video_url, stream=True, timeout=90)
+        dl_resp.raise_for_status()
+        with open(temp_video_path, "wb") as f:
+            for chunk in dl_resp.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+        print(f"Downloaded video successfully ({os.path.getsize(temp_video_path)} bytes)")
+
+        # 1. Run visual classification, face embeddings, and all new analysis on local file
+        video_category, ai_tags, is_nsfw, face_embeddings, extra_analysis = analyze_video_frames(temp_video_path)
         
-        # 1. Run visual classification, face embeddings, and all new analysis
-        video_category, ai_tags, is_nsfw, face_embeddings, extra_analysis = analyze_video_frames(video_url)
-        
-        # 2. Run audio classification + transcription (Whisper)
-        audio_hash, is_speech, language, audio_mood, transcript = extract_and_analyze_audio(video_url)
+        # 2. Run audio classification + transcription (Whisper) on local file
+        audio_hash, is_speech, language, audio_mood, transcript = extract_and_analyze_audio(temp_video_path)
         
         # 3. Final Action-Based Category Override (Combining Audio + Visual)
         final_category = video_category
@@ -110,16 +150,22 @@ def process_video_modal(media_id: str, video_url: str, caption: str = ""):
         
         print(f"Analysis complete for {media_id}. Category: {video_category}, "
               f"Tags: {ai_tags}, Quality: {extra_analysis.get('qualityScore')}, "
-              f"Mood: {extra_analysis.get('colorMood')}, AudioMood: {audio_mood}")
+              f"Mood: {extra_analysis.get('colorMood')}, AudioMood: {audio_mood}, NSFW: {is_nsfw} ({extra_analysis.get('nsfwScore', 0.0)})")
         
         # Send to Kotlin backend
-        print(f"Sending webhook to {KOTLIN_BACKEND_WEBHOOK}")
-        response = requests.post(KOTLIN_BACKEND_WEBHOOK, json=payload)
+        print(f"Sending webhook to {target_webhook}")
+        response = requests.post(target_webhook, json=payload, timeout=30)
         response.raise_for_status()
         print("Webhook sent successfully.")
         
     except Exception as e:
         print(f"Error analyzing video {media_id}: {str(e)}")
+    finally:
+        if temp_video_path and os.path.exists(temp_video_path):
+            try:
+                os.remove(temp_video_path)
+            except Exception:
+                pass
 
 # Define the FastAPI app
 web_app = FastAPI(title="Bruv Schools AI Microservice (Modal)")
@@ -130,8 +176,54 @@ async def analyze_video(request: VideoAnalysisRequest):
     Endpoint called by the Kotlin backend to trigger asynchronous video analysis.
     This routes the heavy work to the process_video_modal Modal function.
     """
-    process_video_modal.spawn(request.media_id, request.video_url, request.caption)
+    target_webhook = request.webhook_url or "https://school.ishinadwelly.com/api/internal/media/analysis-complete"
+    v_url = request.video_url
+    if v_url.startswith("/"):
+        v_url = f"https://school.ishinadwelly.com{v_url}"
+    process_video_modal.spawn(request.media_id, v_url, request.caption, target_webhook)
     return {"status": "Analysis queued on Modal", "media_id": request.media_id}
+
+@app.function(image=image, timeout=60, gpu="A10G")
+def quick_check_video_modal(video_url: str) -> dict:
+    import tempfile, requests, os
+    from video_analyzer import check_video_nsfw
+
+    if video_url.startswith("/"):
+        video_url = f"https://school.ishinadwelly.com{video_url}"
+
+    temp_video_path = None
+    try:
+        temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        temp_video_path = temp_file.name
+        temp_file.close()
+
+        print(f"quick_check_video_modal: Downloading {video_url} to {temp_video_path}")
+        dl_resp = requests.get(video_url, stream=True, timeout=30)
+        dl_resp.raise_for_status()
+        with open(temp_video_path, "wb") as f:
+            for chunk in dl_resp.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+        is_nsfw, nsfw_score = check_video_nsfw(temp_video_path, max_frames=20)
+        return {"isNsfw": is_nsfw, "nsfwScore": nsfw_score}
+    except Exception as e:
+        print(f"quick_check_video_modal error: {e}")
+        return {"isNsfw": False, "nsfwScore": 0.0}
+    finally:
+        if temp_video_path and os.path.exists(temp_video_path):
+            try:
+                os.remove(temp_video_path)
+            except Exception:
+                pass
+
+@web_app.post("/check-moderation")
+def check_moderation_endpoint(request: ModerationRequest):
+    """
+    Synchronous pre-check for video upload moderation.
+    Returns {"isNsfw": bool, "nsfwScore": float} within ~1-2 seconds.
+    """
+    return quick_check_video_modal.remote(request.video_url)
 
 @web_app.post("/ask-question")
 async def ask_question(request: QuestionRequest):
@@ -142,6 +234,11 @@ async def ask_question(request: QuestionRequest):
         from rag_search import retrieve_context
         from llm_router import ask_qwen
         
+        attachment_context = ""
+        if request.attachments:
+            from document_analyzer import process_chat_attachments
+            attachment_context = await process_chat_attachments([a.model_dump() for a in request.attachments])
+
         context = retrieve_context(request.question, history=request.history)
         answer = await ask_qwen(
             request.question, 
@@ -150,7 +247,8 @@ async def ask_question(request: QuestionRequest):
             history=request.history,
             user_memory=request.user_memory,
             selected_model=request.selected_model,
-            use_reasoning=request.use_reasoning
+            use_reasoning=request.use_reasoning,
+            attachment_context=attachment_context
         )
         
         return {
@@ -177,9 +275,27 @@ async def ask_question_stream_endpoint(request: QuestionRequest):
     """
     from rag_search import retrieve_context
     from llm_router import ask_qwen_stream
+    import json
     
     async def event_generator():
         try:
+            attachment_context = ""
+            if request.attachments:
+                yield json.dumps({
+                    "type": "status", 
+                    "stage": "analyzing_attachments", 
+                    "message": f"Analyzing {len(request.attachments)} attached document(s)/image(s)..."
+                }) + "\n"
+                
+                from document_analyzer import process_chat_attachments
+                attachment_context = await process_chat_attachments([a.model_dump() for a in request.attachments])
+                
+                yield json.dumps({
+                    "type": "status", 
+                    "stage": "synthesizing", 
+                    "message": "Reading extracted content and preparing response..."
+                }) + "\n"
+
             context = retrieve_context(request.question, history=request.history)
             async for chunk in ask_qwen_stream(
                 request.question, 
@@ -188,15 +304,24 @@ async def ask_question_stream_endpoint(request: QuestionRequest):
                 history=request.history,
                 user_memory=request.user_memory,
                 selected_model=request.selected_model,
-                use_reasoning=request.use_reasoning
+                use_reasoning=request.use_reasoning,
+                attachment_context=attachment_context
             ):
                 yield chunk
         except Exception as e:
             import traceback
-            import json
             yield json.dumps({"type": "answer", "content": f"Error: {str(e)}\n{traceback.format_exc()}"}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@web_app.post("/generate-topic")
+async def generate_topic_endpoint(request: TopicRequest):
+    """
+    Generates a concise 3 to 6 word title for a conversation based on the initial exchange.
+    """
+    from llm_router import generate_conversation_topic
+    topic = await generate_conversation_topic(request.first_question, request.first_answer or "")
+    return {"status": "success", "topic": topic}
 
 @web_app.get("/health")
 async def health_check():
@@ -316,7 +441,106 @@ async def generate_study_timetable_endpoint(req: StudyTimetableRequest):
             "error_details": traceback.format_exc()
         }
 
+class QuizGenerateRequest(BaseModel):
+    course: str
+    topic: Optional[str] = None
+    num_questions: Optional[int] = 5
+    difficulty: Optional[str] = "medium"
+    context: Optional[str] = None
+    question_type: Optional[str] = "multiple_choice"
+    custom_instructions: Optional[str] = None
+
+class GradeTheoryRequest(BaseModel):
+    question: str
+    student_answer: str
+    subject: Optional[str] = "University Academics"
+    max_marks: Optional[int] = 10
+    model_answer: Optional[str] = None
+    rubric_points: Optional[List[str]] = None
+
+@web_app.post("/warmup")
+@web_app.get("/warmup")
+async def warmup_endpoint():
+    """
+    Pings QwenSmallModel on Modal to initiate container startup.
+    When users enter the Quiz or Bruv AI screen, this warms the GPU so answers generate instantly.
+    If no question arrives within 30 seconds, Modal's scaledown_window powers off the GPU container automatically.
+    """
+    try:
+        SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
+        small_model = SmallModelCls()
+        await small_model.warmup.remote.aio()
+        return {"status": "success", "message": "QwenSmallModel container initiated and warm"}
+    except Exception as e:
+        return {"status": "error", "message": f"Warmup ping error: {str(e)}"}
+
+@web_app.post("/generate-quiz")
+async def generate_quiz_endpoint(req: QuizGenerateRequest):
+    """
+    Generates tailored, course-specific multiple choice or theory quiz questions using AI.
+    Learns from and retrieves unit lecture notes and syllabus materials via RAG.
+    """
+    try:
+        from quiz_generator import generate_course_quiz_ai
+        questions = await generate_course_quiz_ai(
+            course=req.course,
+            topic=req.topic,
+            num_questions=req.num_questions or 5,
+            difficulty=req.difficulty or "medium",
+            context=req.context,
+            question_type=req.question_type or "multiple_choice",
+            custom_instructions=req.custom_instructions
+        )
+        return {
+            "status": "success",
+            "course": req.course,
+            "topic": req.topic or req.course,
+            "count": len(questions),
+            "questions": questions
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "course": req.course,
+            "topic": req.topic or req.course,
+            "count": 0,
+            "questions": [],
+            "message": f"AI Quiz generation failed: {str(e)}",
+            "error_details": traceback.format_exc()
+        }
+
+@web_app.post("/grade-theory-answer")
+async def grade_theory_endpoint(req: GradeTheoryRequest):
+    """
+    Evaluates and grades a student's typed written answer against academic rubrics and model answers.
+    """
+    try:
+        from quiz_generator import grade_student_theory_answer
+        result = await grade_student_theory_answer(
+            question=req.question,
+            student_answer=req.student_answer,
+            subject=req.subject or "University Academics",
+            max_marks=req.max_marks or 10,
+            model_answer=req.model_answer,
+            rubric_points=req.rubric_points
+        )
+        return {"status": "success", **result}
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "message": f"Theory answer evaluation failed: {str(e)}",
+            "error_details": traceback.format_exc()
+        }
+
 @app.function(image=image, min_containers=1, volumes={"/data": rag_volume})
 @modal.asgi_app()
 def fastapi_app():
+    # Mount Browser Autopilot & Mock Portal Router inside container
+    try:
+        from agent.autopilot_server import app as autopilot_app
+        web_app.include_router(autopilot_app.router)
+    except Exception as e:
+        print(f"Container Autopilot router inclusion note: {e}")
     return web_app

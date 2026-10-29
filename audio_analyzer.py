@@ -18,7 +18,9 @@ def extract_and_analyze_audio(video_url: str):
         transcript (str): The transcribed text of the audio using Whisper
     """
     
-    temp_audio_file = f"temp_audio_{hash(video_url)}.wav"
+    if not os.path.exists(video_url) and video_url.startswith("/"):
+        video_url = f"https://school.ishinadwelly.com{video_url}"
+    temp_audio_file = f"temp_audio_{abs(hash(video_url))}.wav"
     
     try:
         # 1. Use FFmpeg to extract audio from the video URL
@@ -35,7 +37,7 @@ def extract_and_analyze_audio(video_url: str):
         
         if not os.path.exists(temp_audio_file):
             print(f"Audio extraction failed for {video_url}")
-            return "no_audio_hash", False, None, "neutral"
+            return "no_audio_hash", False, None, "neutral", ""
             
         # 2. Hash the actual extracted audio file
         hasher = hashlib.md5()

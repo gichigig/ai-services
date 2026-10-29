@@ -561,6 +561,9 @@ def analyze_video_frames(video_url: str):
         category, tags, is_nsfw, face_embeddings, extra_analysis
     """
 
+    if not os.path.exists(video_url) and video_url.startswith("/"):
+        video_url = f"https://school.ishinadwelly.com{video_url}"
+
     cap = cv2.VideoCapture(video_url)
 
     if not cap.isOpened():
@@ -662,14 +665,22 @@ def analyze_video_frames(video_url: str):
             except Exception as e:
                 print(f"Pose error: {e}")
 
-        # ── NSFW Detection (every 10th frame) ──────────────────────
-        if frame_count % 10 == 0:
+        # ── NSFW Detection (every 3rd sampled frame) ──────────────────────
+        if frame_count % 3 == 0:
             try:
                 # NudeDetector expects image path or BGR frame. 
                 preds = nude_detector.detect(frame)
                 for p in preds:
-                    if p['score'] > max_nsfw_score:
-                        max_nsfw_score = float(p['score'])
+                    if isinstance(p, dict):
+                        cls = str(p.get('class') or p.get('label') or '').upper()
+                        score = float(p.get('score', 0.0))
+                        # Target exposed nudity classes
+                        if not cls or "EXPOSED" in cls or "GENITALIA" in cls or "ANUS" in cls or "BUTTOCKS" in cls or "BREAST" in cls or "NUDE" in cls:
+                            if score > max_nsfw_score:
+                                max_nsfw_score = score
+                    elif hasattr(p, 'score'):
+                        if float(p.score) > max_nsfw_score:
+                            max_nsfw_score = float(p.score)
             except Exception as e:
                 pass
 
@@ -856,3 +867,58 @@ def analyze_video_frames(video_url: str):
           f"OCR Length: {len(final_ocr_text)}, Engagement: {engagement_score:.2f}")
 
     return category, tags, is_nsfw, face_embedding_lists, extra_analysis
+
+
+def check_video_nsfw(video_path: str, max_frames: int = 20) -> tuple[bool, float]:
+    """
+    Ultra-fast NSFW pre-check on up to max_frames sampled evenly across the video.
+    Returns (is_nsfw, max_score).
+    Exits early as soon as any frame scores > 0.6 to minimize latency (< 0.5s).
+    """
+    if not os.path.exists(video_path) and video_path.startswith("/"):
+        video_path = f"https://school.ishinadwelly.com{video_path}"
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"check_video_nsfw: Could not open {video_path}")
+        return False, 0.0
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if total_frames <= 0:
+        total_frames = 150
+
+    step = max(1, total_frames // max_frames)
+    max_score = 0.0
+
+    try:
+        for i in range(max_frames):
+            frame_idx = i * step
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, frame = cap.read()
+            if not ret:
+                break
+            try:
+                preds = nude_detector.detect(frame)
+                for p in preds:
+                    if isinstance(p, dict):
+                        cls = str(p.get('class') or p.get('label') or '').upper()
+                        score = float(p.get('score', 0.0))
+                        # Explicit/exposed nudity classes
+                        if not cls or "EXPOSED" in cls or "GENITALIA" in cls or "ANUS" in cls or "BUTTOCKS" in cls or "BREAST" in cls or "NUDE" in cls:
+                            if score > max_score:
+                                max_score = score
+                    elif hasattr(p, 'score'):
+                        if float(p.score) > max_score:
+                            max_score = float(p.score)
+                # Early exit if adult content confirmed
+                if max_score > 0.6:
+                    print(f"check_video_nsfw: Adult content detected early on frame {frame_idx} (Score: {max_score:.2f})")
+                    break
+            except Exception as e:
+                pass
+    finally:
+        cap.release()
+
+    is_nsfw = max_score > 0.6
+    print(f"check_video_nsfw result: is_nsfw={is_nsfw}, score={max_score:.2f}")
+    return is_nsfw, round(max_score, 3)

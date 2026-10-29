@@ -23,11 +23,12 @@ vllm_image = (
 )
 
 # max_inputs=20 means 1 GPU handles up to 20 requests at once before booting a second GPU
-@app.cls(gpu="A10G", image=vllm_image, timeout=1200, min_containers=0)
+@app.cls(gpu="A10G", image=vllm_image, timeout=1200, min_containers=0, scaledown_window=30)
 @modal.concurrent(max_inputs=20)
 class QwenSmallModel:
     """
     Handles the smaller '7B' Qwen model using AWQ quantization for A10G.
+    Automatically scales down to 0 after 30 seconds of inactivity.
     """
     @modal.enter()
     def setup(self):
@@ -46,15 +47,21 @@ class QwenSmallModel:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     @modal.method()
-    async def generate(self, system_message: str, user_message: str, temperature: float = 0.7) -> str:
+    async def warmup(self) -> bool:
+        """Lightweight ping to wake up the A10G container without executing heavy inference."""
+        return True
+
+    @modal.method()
+    async def generate(self, system_message: str = "", user_message: str = "", messages: list = None, temperature: float = 0.7, max_tokens: int = 2048) -> str:
         from vllm import SamplingParams
         import uuid
         
         # Use Qwen's chat template for proper instruction following
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": user_message},
-        ]
+        if messages is None:
+            messages = [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
+            ]
         prompt = self.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
@@ -63,7 +70,7 @@ class QwenSmallModel:
         sampling_params = SamplingParams(
             temperature=temperature,
             top_p=0.9,
-            max_tokens=512,
+            max_tokens=max_tokens,
             repetition_penalty=1.15,
             stop=["<|im_end|>", "<|endoftext|>"],
         )
@@ -104,15 +111,16 @@ class GptOss120bModel:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 
     @modal.method()
-    async def generate(self, system_message: str, user_message: str, temperature: float = 0.7) -> str:
+    async def generate(self, system_message: str = "", user_message: str = "", messages: list = None, temperature: float = 0.7, max_tokens: int = 2048) -> str:
         from vllm import SamplingParams
         import uuid
         
         try:
-            messages = [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message},
-            ]
+            if messages is None:
+                messages = [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": user_message},
+                ]
             prompt = self.tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
@@ -128,7 +136,7 @@ class GptOss120bModel:
         sampling_params = SamplingParams(
             temperature=temperature,
             top_p=0.9,
-            max_tokens=2048,
+            max_tokens=max_tokens,
             repetition_penalty=1.1,
             stop=["<|im_end|>", "<|endoftext|>"],
         )
@@ -164,14 +172,15 @@ class QwenLargeModel:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     @modal.method()
-    async def generate(self, system_message: str, user_message: str, temperature: float = 0.7) -> str:
+    async def generate(self, system_message: str = "", user_message: str = "", messages: list = None, temperature: float = 0.7) -> str:
         from vllm import SamplingParams
         import uuid
         
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": user_message},
-        ]
+        if messages is None:
+            messages = [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
+            ]
         prompt = self.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
@@ -214,7 +223,97 @@ def execute_past_paper_search(keyword: str, year: str) -> str:
     except Exception as e:
         return f"Unable to reach past papers database: {str(e)}"
 
-def execute_web_search(query: str):
+async def crawl_webpage_content(url: str, timeout: int = 10) -> str:
+    """
+    Crawls a webpage URL and extracts clean markdown using Crawl4AI.
+    Executes JavaScript, removes boilerplate, and handles dynamic content.
+    Gracefully falls back to requests + BeautifulSoup if Crawl4AI is unavailable.
+    """
+    if not url or not url.startswith("http"):
+        return ""
+
+    # 1. Attempt Crawl4AI extraction
+    try:
+        import asyncio
+        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+
+        browser_config = BrowserConfig(
+            headless=True,
+            verbose=False,
+            browser_type="chromium"
+        )
+        run_config = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            page_timeout=timeout * 1000,
+            word_count_threshold=10,
+            remove_overlay_elements=True
+        )
+
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            crawl_result = await asyncio.wait_for(
+                crawler.arun(url=url, config=run_config),
+                timeout=timeout
+            )
+            if crawl_result and crawl_result.success:
+                markdown_text = ""
+                if hasattr(crawl_result, "markdown"):
+                    if isinstance(crawl_result.markdown, str):
+                        markdown_text = crawl_result.markdown
+                    elif hasattr(crawl_result.markdown, "raw_markdown"):
+                        markdown_text = crawl_result.markdown.raw_markdown
+                elif hasattr(crawl_result, "markdown_v2"):
+                    markdown_text = str(crawl_result.markdown_v2)
+
+                clean_md = (markdown_text or "").strip()
+                if clean_md:
+                    return clean_md[:3000]
+    except Exception as e:
+        print(f"Crawl4AI extraction notice for {url}: {e}, using fallback scraper.")
+
+    # 2. Resilient fallback: requests/urllib + BeautifulSoup or regex
+    try:
+        raw_html = ""
+        try:
+            import requests
+            res = requests.get(
+                url, 
+                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
+                timeout=5
+            )
+            if res.status_code == 200:
+                raw_html = res.text
+        except Exception:
+            pass
+
+        if not raw_html:
+            import urllib.request
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+            )
+            raw_html = urllib.request.urlopen(req, timeout=5).read().decode("utf-8", errors="ignore")
+
+        if raw_html:
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(raw_html, 'html.parser')
+                for tag in soup(["script", "style", "nav", "footer", "header", "noscript"]):
+                    tag.decompose()
+                text = soup.get_text(separator=' ')
+            except Exception:
+                import re, html as html_lib
+                no_scripts = re.sub(r'<(script|style|nav|footer|header)[^>]*>.*?</\1>', '', raw_html, flags=re.DOTALL | re.IGNORECASE)
+                text = html_lib.unescape(re.sub(r'<[^>]+>', ' ', no_scripts))
+
+            clean_text = ' '.join(text.split())
+            if clean_text:
+                return clean_text[:2500]
+    except Exception:
+        pass
+
+    return ""
+
+async def execute_web_search(query: str):
     import urllib.request
     import urllib.parse
     import re
@@ -234,6 +333,8 @@ def execute_web_search(query: str):
         if "tomorrow" in clean_q or "today" in clean_q or "who plays" in clean_q or "fixture" in clean_q:
             expanded = clean_q.replace("tomorrow", "2026 fixture").replace("today", "2026 fixture").replace("cup", "2026")
             queries.append(f"{expanded} who plays teams")
+        elif "result" in clean_q or "score" in clean_q or "won" in clean_q:
+            queries.append(f"{clean_q} scores results 2026")
             
         results = []
         for q in queries[:2]:
@@ -292,21 +393,25 @@ def execute_web_search(query: str):
             
             top_content = ""
             if unique_results:
-                top_link = unique_results[0].get("href")
-                try:
-                    import requests
-                    from bs4 import BeautifulSoup
-                    res = requests.get(top_link, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
-                    if res.status_code == 200:
-                        soup = BeautifulSoup(res.text, 'html.parser')
-                        for script in soup(["script", "style", "nav", "footer"]):
-                            script.decompose()
-                        text = soup.get_text(separator=' ')
-                        clean_text = ' '.join(text.split())
-                        if clean_text:
-                            top_content = f"\n\n--- TEXT FROM TOP RESULT ({top_link}) ---\n{clean_text[:2000]}\n-----------------------------------\n"
-                except Exception:
-                    pass
+                # Prioritize crawling a URL that specifically points to scores/results/matches rather than a root domain
+                best_link = None
+                for r in unique_results:
+                    href = r.get("href", "").lower()
+                    if any(term in href for term in ["scores", "results", "matches", "fixtures", "table", "stats"]):
+                        best_link = r.get("href")
+                        break
+                top_link = best_link or unique_results[0].get("href")
+                crawled_text = await crawl_webpage_content(top_link)
+                # If first crawled link had negligible content, try the second link
+                if (not crawled_text or len(crawled_text) < 150) and len(unique_results) > 1:
+                    backup_link = unique_results[1].get("href")
+                    backup_text = await crawl_webpage_content(backup_link)
+                    if backup_text and len(backup_text) > len(crawled_text or ""):
+                        crawled_text = backup_text
+                        top_link = backup_link
+
+                if crawled_text:
+                    top_content = f"\n\n--- CRAWLED CONTENT FROM TOP RESULT ({top_link}) ---\n{crawled_text}\n-----------------------------------\n"
 
             docs_str = "\n".join([f"- **{r.get('title', '')}**: {r.get('body', '')} ([Source]({r.get('href', '')}))" for r in (unique_results or results)[:6]])
             docs_str += top_content
@@ -332,32 +437,55 @@ def _search_results_have_substance(tool_result: str, question: str) -> bool:
     """
     import re
     q_lower = question.lower()
-    is_sports_query = any(kw in q_lower for kw in [
-        "score", "result", "who won", "who lost", "epl", "premier league",
-        "champions league", "la liga", "serie a", "bundesliga", "fixture",
-        "match", "goal", "played", "vs", "versus"
+    
+    # Is the user asking for match scores or results?
+    is_score_request = any(kw in q_lower for kw in [
+        "score", "result", "who won", "who lost", "beat", "defeat", "match", "played", "versus", "vs", "fixture"
+    ])
+    is_stats_request = any(kw in q_lower for kw in [
+        "top scorer", "goal scorer", "standings", "table", "leaderboard", "goals", "assists", "clean sheet"
+    ])
+    is_sports_query = is_score_request or is_stats_request or any(kw in q_lower for kw in [
+        "epl", "premier league", "champions league", "la liga", "serie a", "bundesliga"
     ])
     
     if not is_sports_query:
-        # For non-sports queries, the snippets are usually good enough
-        return True
-    
-    # For sports queries, check if the text contains actual score patterns
-    # e.g. "3-1", "2 - 0", "Manchester United 3", etc.
+        return len(tool_result.strip()) > 100
+
+    # For score requests, the text MUST contain actual score patterns (e.g., "2-1", "3 - 0", "beat", "drew")
     score_patterns = [
-        r'\d+\s*[-–]\s*\d+',           # "3-1" or "3 - 1"
-        r'\d+\s*:\s*\d+',              # "3:1"
-        r'won\s+\d+',                  # "won 3"
-        r'beat\s+\w+\s+\d+',           # "beat Arsenal 2"
-        r'drew\s+\d+',                 # "drew 1"
-        r'defeated',                    # "defeated"
+        r'\b\d+\s*[-–]\s*\d+\b',       # "2-1" or "3 - 0"
+        r'\b\d+\s*:\s*\d+\b',          # "2:1"
+        r'\b\d+\s*to\s*\d+\b',         # "2 to 1"
+        r'\bwon\s+\d+\b',              # "won 3"
+        r'\bbeat\s+\w+',               # "beat Arsenal"
+        r'\bdrew\s+\d+',               # "drew 1"
+        r'\bdefeated\b',
+        r'\bFT\b',
     ]
     
-    text_to_check = tool_result
-    for pattern in score_patterns:
-        if re.search(pattern, text_to_check, re.IGNORECASE):
-            return True
-    
+    # For stats requests (top scorers, standings), check for goal counts or points
+    stat_patterns = [
+        r'\b\d+\s*goals?\b',           # "5 goals"
+        r'\bgoals?\s*:\s*\d+\b',       # "goals: 5"
+        r'\bscored\s+\d+\b',           # "scored 5"
+        r'\b\d+\s*pts\b',              # "15 pts"
+        r'\bpoints?\s*:\s*\d+\b',      # "points: 15"
+        r'\btop\s+scorer',
+        r'\bstandings\b',
+        r'\bleague\s+table\b',
+    ]
+
+    has_scores = any(re.search(p, tool_result, re.IGNORECASE) for p in score_patterns)
+    has_stats = any(re.search(p, tool_result, re.IGNORECASE) for p in stat_patterns)
+
+    if is_score_request and has_scores:
+        return True
+    if is_stats_request and has_stats:
+        return True
+    if not is_score_request and not is_stats_request and (has_scores or has_stats):
+        return True
+
     return False
 
 SPORTS_FALLBACK_RESPONSE = (
@@ -369,6 +497,104 @@ SPORTS_FALLBACK_RESPONSE = (
     "- [Google Sports](https://www.google.com/search?q=premier+league+results)\n\n"
     "Let me know if there's anything else I can help with!"
 )
+
+def classify_query_intent(question: str) -> tuple[str, str]:
+    """
+    Approach 2: External Router (Classification)
+    Deterministically determines if a user query requires live web search
+    BEFORE invoking the main LLM. Bypasses the 7B model's pre-training hallucinations
+    and cuts generation latency in half.
+    """
+    if not question:
+        return "DIRECT_ANSWER", ""
+
+    q_lower = question.lower().strip()
+
+    # 1. Negative rules: In-app actions, memory updates, greetings, coding/math
+    nav_phrases = [
+        "take me to", "open timetable", "open marketplace", "open opportunities",
+        "open reels", "show reels", "open messages", "open feed", "my profile",
+        "qr code", "scan qr", "generate timetable", "study timetable", "ecitizen",
+        "e-citizen"
+    ]
+    if any(p in q_lower for p in nav_phrases):
+        return "DIRECT_ANSWER", ""
+
+    memory_phrases = [
+        "call me ", "remember that", "my name is", "remember my", "save my",
+        "set my name", "forget my"
+    ]
+    if any(p in q_lower for p in memory_phrases):
+        return "DIRECT_ANSWER", ""
+
+    greeting_phrases = [
+        "hello", "hi bluv", "hey bluv", "how are you", "who are you",
+        "what can you do", "good morning", "good evening", "good afternoon"
+    ]
+    if q_lower in greeting_phrases or (len(q_lower.split()) <= 2 and any(g in q_lower for g in ["hello", "hey", "hi"])):
+        return "DIRECT_ANSWER", ""
+
+    academic_prefixes = [
+        "solve ", "calculate ", "derive ", "differentiate ", "integrate ",
+        "write python", "write a code", "write a function", "write an algorithm",
+        "explain the concept of", "what is the formula for"
+    ]
+    if any(q_lower.startswith(p) for p in academic_prefixes):
+        return "DIRECT_ANSWER", ""
+
+    # 2. Positive rules: Sports leagues, clubs, tournaments, and performance terms
+    sports_competitions = [
+        "premier league", "epl", "champions league", "ucl", "europa league",
+        "la liga", "serie a", "bundesliga", "ligue 1", "fa cup", "carabao cup",
+        "afcon", "copa america", "world cup", "nba", "nfl", "formula 1",
+        "f1", "motogp", "kpl", "fkf"
+    ]
+    sports_terms = [
+        "top scorer", "top scorers", "goal scorer", "golden boot", "standings",
+        "league table", "points table", "fixtures", "fixture", "who won", "who lost",
+        "match score", "scores today", "scores yesterday", "scores this weekend",
+        "match result", "clean sheets", "assists leader", "head to head", "vs ", " versus "
+    ]
+    sports_clubs = [
+        "arsenal", "chelsea", "liverpool", "manchester united", "man utd", "man city",
+        "manchester city", "tottenham", "spurs", "real madrid", "barcelona", "bayern",
+        "psg", "juventus", "inter milan", "ac milan", "gor mahia", "afc leopards",
+        "newcastle", "aston villa", "west ham", "brentford", "brighton", "wolves"
+    ]
+
+    has_competition = any(c in q_lower for c in sports_competitions)
+    has_sports_term = any(t in q_lower for t in sports_terms)
+    has_club = any(c in q_lower for c in sports_clubs)
+
+    if has_competition or (has_club and (has_sports_term or any(w in q_lower for w in ["game", "match", "play", "result", "score", "win", "lose"]))) or (has_sports_term and any(w in q_lower for w in ["league", "team", "football", "soccer", "cup", "match", "game", "season"])):
+        clean_search = question.replace("?", "").replace("who's", "who is").strip()
+        if "this season" in clean_search.lower() and "2026" not in clean_search:
+            clean_search += " 2026"
+        return "NEEDS_LIVE_SEARCH", clean_search
+
+    # 3. Temporal / Real-time events & news
+    temporal_markers = [
+        "today's news", "news today", "latest news", "breaking news", "recent news",
+        "weather in ", "weather today", "currency rate", "exchange rate", "stock price",
+        "happened today", "happening today", "what happened yesterday", "results this weekend"
+    ]
+    if any(m in q_lower for m in temporal_markers):
+        clean_search = question.replace("?", "").strip()
+        return "NEEDS_LIVE_SEARCH", clean_search
+
+    # 4. Explicit web search requests
+    explicit_search_commands = [
+        "search the web", "search online", "google it", "check the web",
+        "look up online", "search internet", "browse the web"
+    ]
+    if any(cmd in q_lower for cmd in explicit_search_commands):
+        clean_search = question
+        for cmd in explicit_search_commands:
+            clean_search = clean_search.replace(cmd, "")
+        clean_search = clean_search.replace("?", "").strip()
+        return "NEEDS_LIVE_SEARCH", clean_search or question
+
+    return "DIRECT_ANSWER", ""
 
 
 
@@ -517,6 +743,12 @@ You are the built-in guide for the Bruv Schools App. When students ask where a f
     - Path: Tap the Search icon at the top of Feed, Courses, or Marketplace.
     - Link: [Open Search](nav://search)
     - Features: Search students, clubs, courses, marketplace items, and campus posts.
+
+11.  e-Citizen Assistant & Built-in Browser:
+    - Path: Type '/ecitizen' in chat, tap quick chip 'e-Citizen', or tap 'More' -> 'e-Citizen Assistant'
+    - Link: [Open e-Citizen Assistant](nav://ecitizen)
+    - Features: Built-in secure browser and step-by-step AI guidance for Kenya's top 20 e-Citizen services (Police Clearance/Good Conduct, Smart Driving License renewal, Passports, Business Registration BRS, Land Search ArdhiSasa, SHA Health, HELB Clearance, KRA PIN, etc.). Allows direct entry of credentials and SMS 2FA codes.
+    - Instructions: ALWAYS answer student questions about e-Citizen services directly in chat with statutory fees in KES, requirements, and steps. Include [Open in e-Citizen Assistant](nav://ecitizen) at the end of your response so the student can open the interactive browser whenever they are ready. Never navigate automatically.
 """
 
 def execute_save_memory(student_id: str, tool_call: dict) -> str:
@@ -542,7 +774,7 @@ def execute_save_memory(student_id: str, tool_call: dict) -> str:
     except Exception as e:
         return f"Memory update error: {str(e)}"
 
-async def ask_qwen(question: str, context: str, student_id: str = None, history: list = None, user_memory: dict = None, selected_model: str = "small", use_reasoning: bool = False) -> str:
+async def ask_qwen(question: str, context: str, student_id: str = None, history: list = None, user_memory: dict = None, selected_model: str = "small", use_reasoning: bool = False, attachment_context: str = "") -> str:
     """
     Main entry point function.
     Routes simple queries, past papers, web searches, and memory updates to the small 7B model.
@@ -559,7 +791,7 @@ async def ask_qwen(question: str, context: str, student_id: str = None, history:
     
     base_system_message = f"""You are an intelligent and friendly companion named Bluv AI, designed for students on campus.
 If asked about your identity, model, or creator, you must strictly state that you are Bluv AI. Do not mention Qwen, Alibaba, or any other underlying architecture.
-You are not just an educational assistant; you are a friend. Be highly conversational, engaging, and empathetic. If a user wants to talk about their day, vent, or just casually chat, be playful, supportive, and act as a great listener. Match the user's mood—if they are sad, be comforting; if they are funny, be playfully sarcastic or joke back. Use appropriate emojis generously to express emotions and give your personality life!
+You are not just an educational assistant; you are a friend. Be highly conversational, engaging, and empathetic. If a user wants to talk about their day, vent, or just casually chat, be playful, supportive, and act as a great listener. Match the user's mood—if they are sad, be comforting; if they are funny, be playfully sarcastic or joke back. CRITICAL RULE: Do NOT use emojis anywhere in your response. Output clean, well-formatted text only.
 
 CURRENT DATE & TIME: Today is {current_date}, and the current time is {current_time}. You must use this information if asked about today's date, the day of the week, or current time. Do not guess the date.
 
@@ -570,10 +802,10 @@ You will be provided with some context and a student's question. If the context 
     small_system_message = base_system_message + """
 You have direct access to automated tools. When a tool is needed, output ONLY the raw JSON block without extra conversational commentary:
 
-1. WEB SEARCH (LIVE SCORES / FIXTURES / CURRENT NEWS / INTERNET SEARCH):
-Whenever the user asks for sports scores, upcoming matches, who plays next/tomorrow, recent results, news, weather, or real-time facts, OR says "search on the internet", "search online", "google it", "check the web", output ONLY:
-{"tool": "search_web", "query": "<clear search query with team, cup, or subject names>"}
-CRITICAL: You MUST use this tool for sports scores or live events. DO NOT provide answers from your memory, as your training data is outdated!
+1. WEB SEARCH (LIVE SCORES / FIXTURES / TOP SCORERS / LEAGUE TABLES / CURRENT NEWS):
+Whenever the user asks for sports scores, upcoming matches, fixtures, who plays next/tomorrow, recent results, top scorers, goal leaders, league tables/standings, player stats, news, weather, or real-time facts, OR says "search on the internet", "search online", "google it", "check the web", output ONLY:
+{"tool": "search_web", "query": "<clear search query with team, league, player, or competition names>"}
+CRITICAL: You MUST use this tool for ALL sports queries (scores, fixtures, top scorers, standings, transfers) and live events. DO NOT attempt to answer from your memory, as your training data is completely outdated!
 
 2. PAST PAPERS / EXAM PAPERS:
 When a user asks for past papers, exam questions, or test archives, output ONLY:
@@ -584,8 +816,9 @@ When the user tells you to remember something, set a preferred name, change how 
 {"tool": "save_memory", "preferred_name": "<new name or null>", "custom_instructions": "<new directive or null>", "enrolled_units": ["<unit1>", "<unit2>"], "add_memory": "<learned fact or null>", "reply": "<warm direct confirmation addressing them as requested and obeying the rule>"}
 
 4. AUTONOMOUS IN-APP NAVIGATION:
-When the user asks to go somewhere, navigate, open a screen, or says "take me to...", "open...", "show me...", "go to..." (e.g. "take me to my timetable", "open marketplace", "show me campus reels", "open opportunities", "show my profile", "I want to scan a QR code", "open search"), output ONLY:
-{"tool": "navigate_app", "destination": "timetable|marketplace|opportunities|reels|feed|messages|courses|connect|profile|search", "reply": "<warm, cheerful confirmation with emoji stating you are navigating there right now>"}
+When the user explicitly asks to go somewhere, navigate, open a screen, or says "take me to...", "open...", "show me...", "go to..." (e.g. "take me to my timetable", "open marketplace", "show me campus reels", "open opportunities", "show my profile", "I want to scan a QR code", "open search"), output ONLY:
+{"tool": "navigate_app", "destination": "timetable|marketplace|opportunities|reels|feed|messages|courses|connect|profile|search", "reply": "<warm, cheerful confirmation stating you are navigating there right now>"}
+CRITICAL: DO NOT use navigate_app for e-Citizen. When the user asks questions about e-Citizen services (e.g., Police Clearance/Good Conduct, Driving License, Passports, Business Registration BRS, ArdhiSasa, SHA, HELB, KRA PIN), ALWAYS answer their questions thoroughly directly in chat explaining statutory fees in KES, requirements, and steps! At the end, include [Open e-Citizen Assistant](nav://ecitizen) so they can launch the interactive browser when ready.
 
 5. COMPLEX TIMETABLE / ADVANCED REASONING:
 If the user asks to generate a full weekly study timetable or solve a complex calculus/physics proof, reply with EXACTLY: <ROUTE_TO_LARGE>
@@ -604,26 +837,42 @@ User: "show me reels"
 Assistant: {"tool": "navigate_app", "destination": "reels", "reply": "Taking you to Campus Reels! "}
 
 User: "call me Captain from now on"
-Assistant: {"tool": "save_memory", "preferred_name": "Captain", "reply": "Aye aye, Captain!  I'll always address you as Captain from now on."}
+Assistant: {"tool": "save_memory", "preferred_name": "Captain", "reply": "Aye aye, Captain! I'll always address you as Captain from now on."}
+
+User: "who's the premier league goal top scorer this season"
+Assistant: {"tool": "search_web", "query": "Premier League top goal scorer this season"}
 
 User: "what was the Manchester united and AC Milan yesterday results"
 Assistant: {"tool": "search_web", "query": "Manchester United vs AC Milan match score results"}
 
-User: "Hello! How are you?"
-Assistant: Hey there!  I'm doing great and ready to help you with your studies or chat about anything on your mind. How is your day going?
+7. ATTACHED DOCUMENTS & IMAGES:
+When the user attaches documents (PDF, DOCX, text) or images (diagrams, math problems, screenshots, notes), their parsed contents and OCR extractions are provided inside <ATTACHED_DOCUMENT> or <ATTACHED_IMAGE> blocks.
+- Directly analyze the attached content to answer the user's questions or solve problems.
+- If the user asks to summarize, explain, solve, or extract specific answers (e.g. "solve question 3", "what is this document about?"), do so with high accuracy based on the attached text.
+- If the student query is general or empty, provide a well-structured summary, key takeaways, and relevant academic context.
+- CRITICAL RULE: Do NOT use emojis anywhere in your response.
+
+8. WEBSITE BUILDER:
+When the user asks to create, build, design, or generate a website, portfolio, landing page, CV page, or any web page, output ONLY:
+{"tool": "generate_website", "title": "<descriptive title>", "description": "<what the user wants>"}
+This tool is ONLY available when the GPT OSS model is selected. If the current model is NOT gpt_120b, reply:
+"Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
 """
 
+    context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
+    attachment_str = f"{attachment_context}\n\n" if attachment_context else ""
+    
     history_str = ""
     if history and len(history) > 0:
-        history_str = "Chat History:\n"
+        history_str = "Conversation Context (Prior messages in this chat):\n"
         for msg in history:
-            role = msg.get("role", "unknown").capitalize()
+            role = "Student" if msg.get("role", "").lower() in ["user", "student"] else "Bluv AI"
             content = msg.get("content", "")
-            history_str += f"{role}: {content}\n"
+            if content:
+                history_str += f"{role}: {content}\n"
         history_str += "\n"
 
-    context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
-    user_message = f"""{context_str}{history_str}Student Question: {question}"""
+    final_user_turn = f"{context_str}{attachment_str}{history_str}Student Question: {question}\n(Remember to keep conversational context from the conversation above and answer the question naturally without using any emojis.)"
 
     SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
     small_model = SmallModelCls()
@@ -637,14 +886,34 @@ Assistant: Hey there!  I'm doing great and ready to help you with your studies o
     if selected_model == "gpt_120b":
         GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
         active_model = GptModelCls()
-        response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, user_message)
     elif selected_model == "large":
         LargeModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenLargeModel")
         active_model = LargeModelCls()
-        response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, user_message)
     else:
         active_model = small_model
-        response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, user_message)
+
+    # Approach 2: External Router Pre-Flight Check (Zero-hallucination upfront search)
+    intent, search_query = classify_query_intent(question)
+    if intent == "NEEDS_LIVE_SEARCH":
+        tool_result, sources = await execute_web_search(search_query)
+        if not _search_results_have_substance(tool_result, question):
+            return SPORTS_FALLBACK_RESPONSE
+        summary_prompt = f"""You are Bluv AI. You just retrieved real-time verified information from the internet:
+
+<WEB_SEARCH_RESULTS>
+{tool_result}
+</WEB_SEARCH_RESULTS>
+
+Student Question: {question}
+
+CRITICAL ANTI-HALLUCINATION RULES:
+1. Use ONLY the verified factual scores, numbers, and facts explicitly written inside <WEB_SEARCH_RESULTS> above.
+2. DO NOT invent, guess, or extrapolate any match results, team pairings, or scorelines.
+3. If the specific matches or scores asked about are not explicitly written with final numbers in the search results, state clearly: "I searched the latest reports but could not find the verified final scores for those matches." and provide the source links. Never invent a scoreline.
+4. STRICT RULE: Do not use emojis anywhere in your response."""
+        return await active_model.generate.remote.aio(base_system_message + reasoning_prompt, summary_prompt, temperature=0.2)
+
+    response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, final_user_turn)
 
     # Check if small model executed a tool call
     tool_call = extract_tool_call(response)
@@ -662,7 +931,7 @@ Assistant: Hey there!  I'm doing great and ready to help you with your studies o
                 return execute_past_paper_search(tool_call.get("keyword", ""), tool_call.get("year", ""))
             elif tool_name == "search_web":
                 query = tool_call.get("query", "")
-                tool_result, sources = execute_web_search(query)
+                tool_result, sources = await execute_web_search(query)
                 # Code-level guard: if sports query and no actual scores found, bypass LLM entirely
                 if not _search_results_have_substance(tool_result, question):
                     return SPORTS_FALLBACK_RESPONSE
@@ -676,7 +945,44 @@ Here is the raw text extracted from the internet:
 Student Question: {question}
 
 CRITICAL RULE: Using ONLY the text inside the <WEB_SEARCH_RESULTS> tags above, answer the student's question. If the provided text does not contain the exact answer, strictly reply that you could not find it in the search results. DO NOT GUESS OR MAKE UP INFORMATION. If data is present, summarize it cheerfully."""
-                return await active_model.generate.remote.aio(base_system_message + reasoning_prompt, summary_prompt, temperature=0.2)
+            elif tool_name == "generate_website":
+                if selected_model == "gpt_120b":
+                    site_title = tool_call.get("title", "My Website")
+                    site_desc = tool_call.get("description", question)
+                    context_section = f"\n\nCONVERSATION CONTEXT:\n{history_str}\n" if history_str else ""
+                    website_prompt = f"""You are an expert frontend web developer and designer. Generate a complete, production-quality, single-file HTML website.
+
+REQUEST: {site_desc}
+TITLE: {site_title}{context_section}
+
+STRICT RULES:
+1. Output a SINGLE self-contained HTML file with ALL CSS inside <style> tags and ALL JavaScript inside <script> tags.
+2. Use Google Fonts via CDN link (Inter, Poppins, or similar modern fonts).
+3. Use Font Awesome 6 via CDN (https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css) for icons.
+4. Make it FULLY responsive with a mobile-first approach and proper meta viewport tag.
+5. Use modern premium design: smooth gradients, subtle box-shadows, clean typography, micro-animations (CSS transitions/transforms).
+6. NO external CSS frameworks (no Tailwind, no Bootstrap). Write all CSS from scratch.
+7. NO placeholder images. Use CSS gradients, geometric patterns, Font Awesome icons, or SVG shapes instead.
+8. Include smooth scroll behavior, hover effects, and polished interactive elements.
+9. Use a cohesive color palette (not generic primary colors). Choose sophisticated, harmonious colors.
+10. The site must look visually stunning and premium - not a basic template.
+11. Include proper HTML5 semantic structure (header, nav, main, section, footer).
+12. Output ONLY the raw HTML code starting with <!DOCTYPE html> and ending with </html>. No markdown code fences, no explanations before or after."""
+                    website_system = "You are a world-class web developer. Output ONLY raw HTML code. No markdown, no explanations, no code fences. Start with <!DOCTYPE html> and end with </html>."
+                    GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
+                    gpt_model = GptModelCls()
+                    html_output = await gpt_model.generate.remote.aio(website_system, website_prompt, temperature=0.7, max_tokens=8192)
+                    html_output = html_output.strip()
+                    if html_output.startswith("```html"):
+                        html_output = html_output[7:]
+                    if html_output.startswith("```"):
+                        html_output = html_output[3:]
+                    if html_output.endswith("```"):
+                        html_output = html_output[:-3]
+                    html_output = html_output.strip()
+                    return f"Here is your website -- \"{site_title}\". You can preview it below and ask me to make changes like colors, layout, sections, or content.\n\n[WEBSITE_PREVIEW]\n{html_output}\n[/WEBSITE_PREVIEW]"
+                else:
+                    return "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
         except Exception:
             pass
     
@@ -737,7 +1043,7 @@ If the user is setting a memory or rule, output:
                 
                 elif tool_name == "search_web":
                     query = tool_call.get("query", "")
-                    tool_result, sources = execute_web_search(query)
+                    tool_result, sources = await execute_web_search(query)
                     if not _search_results_have_substance(tool_result, question):
                         return SPORTS_FALLBACK_RESPONSE
                     summary_prompt = f"""Student Question: {question}
@@ -752,7 +1058,7 @@ CRITICAL RULE: Using ONLY the web search results above, answer the student's que
     
     return response
 
-async def ask_qwen_stream(question: str, context: str, student_id: str = None, history: list = None, user_memory: dict = None, selected_model: str = "small", use_reasoning: bool = False):
+async def ask_qwen_stream(question: str, context: str, student_id: str = None, history: list = None, user_memory: dict = None, selected_model: str = "small", use_reasoning: bool = False, attachment_context: str = ""):
     import json
     import requests
     
@@ -765,7 +1071,7 @@ async def ask_qwen_stream(question: str, context: str, student_id: str = None, h
     base_system_message = f"""You are Bluv AI, an intelligent and friendly companion for students inside the Bruv Schools App.
 When students say "this app", "here", or "your database", they mean the Bruv Schools platform.
 If asked about your identity, strictly state you are Bluv AI.
-Be highly conversational, engaging, and empathetic. Match the user's mood and use appropriate emojis generously.
+Be highly conversational, engaging, and empathetic. Match the user's mood. CRITICAL RULE: Do NOT use emojis anywhere in your response. Output clean, well-formatted text only.
 
 CURRENT DATE & TIME: Today is {current_date}, and the current time is {current_time}. You must use this information if asked about today's date, the day of the week, or current time. Do not guess the date.
 
@@ -775,10 +1081,10 @@ CURRENT DATE & TIME: Today is {current_date}, and the current time is {current_t
     small_system_message = base_system_message + """
 You have direct access to automated tools. When a tool is needed, output ONLY the raw JSON block without extra conversational commentary:
 
-1. WEB SEARCH (LIVE SCORES / FIXTURES / CURRENT NEWS / INTERNET SEARCH):
-Whenever the user asks for sports scores, upcoming matches, who plays next/tomorrow, recent results, news, weather, or real-time facts, OR says "search on the internet", "search online", "google it", "check the web", output ONLY:
-{"tool": "search_web", "query": "<clear search query with team, cup, or subject names>"}
-CRITICAL: You MUST use this tool for sports scores or live events. DO NOT provide answers from your memory, as your training data is outdated!
+1. WEB SEARCH (LIVE SCORES / FIXTURES / TOP SCORERS / LEAGUE TABLES / CURRENT NEWS):
+Whenever the user asks for sports scores, upcoming matches, fixtures, who plays next/tomorrow, recent results, top scorers, goal leaders, league tables/standings, player stats, news, weather, or real-time facts, OR says "search on the internet", "search online", "google it", "check the web", output ONLY:
+{"tool": "search_web", "query": "<clear search query with team, league, player, or competition names>"}
+CRITICAL: You MUST use this tool for ALL sports queries (scores, fixtures, top scorers, standings, transfers) and live events. DO NOT attempt to answer from your memory, as your training data is completely outdated!
 
 2. PAST PAPERS / EXAM PAPERS:
 When a user asks for past papers, exam questions, or test archives, output ONLY:
@@ -789,8 +1095,9 @@ When the user tells you to remember something, set a preferred name, change how 
 {"tool": "save_memory", "preferred_name": "<new name or null>", "custom_instructions": "<new directive or null>", "enrolled_units": ["<unit1>", "<unit2>"], "add_memory": "<learned fact or null>", "reply": "<warm direct confirmation addressing them as requested and obeying the rule>"}
 
 4. AUTONOMOUS IN-APP NAVIGATION:
-When the user asks to go somewhere, navigate, open a screen, or says "take me to...", "open...", "show me...", "go to..." (e.g. "take me to my timetable", "open marketplace", "show me campus reels", "open opportunities", "show my profile", "I want to scan a QR code", "open search"), output ONLY:
-{"tool": "navigate_app", "destination": "timetable|marketplace|opportunities|reels|feed|messages|courses|connect|profile|search", "reply": "<warm, cheerful confirmation with emoji stating you are navigating there right now>"}
+When the user explicitly asks to go somewhere, navigate, open a screen, or says "take me to...", "open...", "show me...", "go to..." (e.g. "take me to my timetable", "open marketplace", "show me campus reels", "open opportunities", "show my profile", "I want to scan a QR code", "open search"), output ONLY:
+{"tool": "navigate_app", "destination": "timetable|marketplace|opportunities|reels|feed|messages|courses|connect|profile|search", "reply": "<warm, cheerful confirmation stating you are navigating there right now>"}
+CRITICAL: DO NOT use navigate_app for e-Citizen. When the user asks questions about e-Citizen services (e.g., Police Clearance/Good Conduct, Driving License, Passports, Business Registration BRS, ArdhiSasa, SHA, HELB, KRA PIN), ALWAYS answer their questions thoroughly directly in chat explaining statutory fees in KES, requirements, and steps! At the end, include [Open e-Citizen Assistant](nav://ecitizen) so they can launch the interactive browser when ready.
 
 5. COMPLEX TIMETABLE / ADVANCED REASONING:
 If the user asks to generate a full weekly study timetable or solve a complex calculus/physics proof, reply with EXACTLY: <ROUTE_TO_LARGE>
@@ -798,37 +1105,34 @@ If the user asks to generate a full weekly study timetable or solve a complex ca
 6. CASUAL CHAT & DIRECT QUESTIONS:
 If it's friendly conversation, academic help, or questions about their units/lessons/schedule, answer warmly and directly, strictly obeying their custom instructions and preferred name!
 
-EXAMPLES OF HOW TO RESPOND:
-User: "take me to my timetable"
-Assistant: {"tool": "navigate_app", "destination": "timetable", "reply": "Taking you to your Timetable now! "}
+7. ATTACHED DOCUMENTS & IMAGES:
+When the user attaches documents (PDF, DOCX, text) or images (diagrams, math problems, screenshots, notes), their parsed contents and OCR extractions are provided inside <ATTACHED_DOCUMENT> or <ATTACHED_IMAGE> blocks.
+- Directly analyze the attached content to answer the user's questions or solve problems.
+- If the user asks to summarize, explain, solve, or extract specific answers (e.g. "solve question 3", "what is this document about?"), do so with high accuracy based on the attached text.
+- If the student query is general or empty, provide a well-structured summary, key takeaways, and relevant academic context.
+- CRITICAL RULE: Do NOT use emojis anywhere in your response.
 
-User: "open the marketplace"
-Assistant: {"tool": "navigate_app", "destination": "marketplace", "reply": "Opening the Campus Marketplace for you! "}
-
-User: "show me reels"
-Assistant: {"tool": "navigate_app", "destination": "reels", "reply": "Taking you to Campus Reels! "}
-
-User: "call me Captain from now on"
-Assistant: {"tool": "save_memory", "preferred_name": "Captain", "reply": "Aye aye, Captain!  I'll always address you as Captain from now on."}
-
-User: "what was the Manchester united and AC Milan yesterday results"
-Assistant: {"tool": "search_web", "query": "Manchester United vs AC Milan match score results"}
-
-User: "Hello! How are you?"
-Assistant: Hey there!  I'm doing great and ready to help you with your studies or chat about anything on your mind. How is your day going?
+8. WEBSITE BUILDER:
+When the user asks to create, build, design, or generate a website, portfolio, landing page, CV page, or any web page, output ONLY:
+{"tool": "generate_website", "title": "<descriptive title>", "description": "<what the user wants>"}
+This tool is ONLY available when the GPT OSS model is selected. If the current model is NOT gpt_120b, reply:
+"Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
 """
 
+    context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
+    attachment_str = f"{attachment_context}\n\n" if attachment_context else ""
+    
     history_str = ""
     if history and len(history) > 0:
-        history_str = "Chat History:\n"
+        history_str = "Conversation Context (Prior messages in this chat):\n"
         for msg in history:
-            role = msg.get("role", "unknown").capitalize()
+            role = "Student" if msg.get("role", "").lower() in ["user", "student"] else "Bluv AI"
             content = msg.get("content", "")
-            history_str += f"{role}: {content}\n"
+            if content:
+                history_str += f"{role}: {content}\n"
         history_str += "\n"
 
-    context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
-    user_message = f"""{context_str}{history_str}Student Question: {question}"""
+    final_user_turn = f"{context_str}{attachment_str}{history_str}Student Question: {question}\n(Remember to keep conversational context from the conversation above and answer the question naturally without using any emojis.)"
 
     yield json.dumps({"type": "status", "message": "Analyzing request..."}) + "\n"
     
@@ -844,14 +1148,41 @@ Assistant: Hey there!  I'm doing great and ready to help you with your studies o
     if selected_model == "gpt_120b":
         GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
         active_model = GptModelCls()
-        response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, user_message)
     elif selected_model == "large":
         LargeModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenLargeModel")
         active_model = LargeModelCls()
-        response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, user_message)
     else:
         active_model = small_model
-        response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, user_message)
+
+    # Approach 2: External Router Pre-Flight Check (Zero-hallucination upfront search)
+    intent, search_query = classify_query_intent(question)
+    if intent == "NEEDS_LIVE_SEARCH":
+        yield json.dumps({"type": "status", "stage": "web_search", "query": search_query, "message": f"Searching the web for '{search_query}'..."}) + "\n"
+        tool_result, sources = await execute_web_search(search_query)
+        if sources:
+            yield json.dumps({"type": "sources", "sources": sources}) + "\n"
+        if not _search_results_have_substance(tool_result, question):
+            yield json.dumps({"type": "answer", "content": SPORTS_FALLBACK_RESPONSE, "sources": sources}, ensure_ascii=False) + "\n"
+            return
+        yield json.dumps({"type": "status", "stage": "synthesizing", "message": "Reading live sources and writing response..."}) + "\n"
+        summary_prompt = f"""You are Bluv AI. You just retrieved real-time verified information from the internet:
+
+<WEB_SEARCH_RESULTS>
+{tool_result}
+</WEB_SEARCH_RESULTS>
+
+Student Question: {question}
+
+CRITICAL ANTI-HALLUCINATION RULES:
+1. Use ONLY the verified factual scores, numbers, and facts explicitly written inside <WEB_SEARCH_RESULTS> above.
+2. DO NOT invent, guess, or extrapolate any match results, team pairings, or scorelines.
+3. If the specific matches or scores asked about are not explicitly written with final numbers in the search results, state clearly: "I searched the latest reports but could not find the verified final scores for those matches." and provide the source links. Never invent a scoreline.
+4. STRICT RULE: Do not use emojis anywhere in your response."""
+        summary_response = await active_model.generate.remote.aio(base_system_message + reasoning_prompt, summary_prompt, temperature=0.2)
+        yield json.dumps({"type": "answer", "content": summary_response, "sources": sources}, ensure_ascii=False) + "\n"
+        return
+
+    response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, final_user_turn)
 
     # Check if small model executed a tool call
     tool_call = extract_tool_call(response)
@@ -877,7 +1208,7 @@ Assistant: Hey there!  I'm doing great and ready to help you with your studies o
             elif tool_name == "search_web":
                 query = tool_call.get("query", "")
                 yield json.dumps({"type": "status", "stage": "web_search", "query": query, "message": f"Searching the web for '{query}'..."}) + "\n"
-                tool_result, sources = execute_web_search(query)
+                tool_result, sources = await execute_web_search(query)
                 if sources:
                     yield json.dumps({"type": "sources", "sources": sources}) + "\n"
                 # Code-level guard: if sports query and no actual scores found, bypass LLM entirely
@@ -894,10 +1225,54 @@ Here is the raw text extracted from the internet:
 
 Student Question: {question}
 
-Using ONLY the text inside the <WEB_SEARCH_RESULTS> tags above, answer the student's question. If data is present, summarize it cheerfully."""
+Using ONLY the text inside the <WEB_SEARCH_RESULTS> tags above, answer the student's question. If data is present, summarize it cheerfully. CRITICAL RULE: Do NOT use emojis anywhere in your response."""
                 summary_response = await active_model.generate.remote.aio(base_system_message + reasoning_prompt, summary_prompt)
                 yield json.dumps({"type": "answer", "content": summary_response, "sources": sources}, ensure_ascii=False) + "\n"
                 return
+            elif tool_name == "generate_website":
+                if selected_model == "gpt_120b":
+                    yield json.dumps({"type": "status", "stage": "generating_website", "message": "Designing and building your website..."}) + "\n"
+                    site_title = tool_call.get("title", "My Website")
+                    site_desc = tool_call.get("description", question)
+                    context_section = f"\n\nCONVERSATION CONTEXT:\n{history_str}\n" if history_str else ""
+                    website_prompt = f"""You are an expert frontend web developer and designer. Generate a complete, production-quality, single-file HTML website.
+
+REQUEST: {site_desc}
+TITLE: {site_title}{context_section}
+
+STRICT RULES:
+1. Output a SINGLE self-contained HTML file with ALL CSS inside <style> tags and ALL JavaScript inside <script> tags.
+2. Use Google Fonts via CDN link (Inter, Poppins, or similar modern fonts).
+3. Use Font Awesome 6 via CDN (https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css) for icons.
+4. Make it FULLY responsive with a mobile-first approach and proper meta viewport tag.
+5. Use modern premium design: smooth gradients, subtle box-shadows, clean typography, micro-animations (CSS transitions/transforms).
+6. NO external CSS frameworks (no Tailwind, no Bootstrap). Write all CSS from scratch.
+7. NO placeholder images. Use CSS gradients, geometric patterns, Font Awesome icons, or SVG shapes instead.
+8. Include smooth scroll behavior, hover effects, and polished interactive elements.
+9. Use a cohesive color palette (not generic primary colors). Choose sophisticated, harmonious colors.
+10. The site must look visually stunning and premium - not a basic template.
+11. Include proper HTML5 semantic structure (header, nav, main, section, footer).
+12. Output ONLY the raw HTML code starting with <!DOCTYPE html> and ending with </html>. No markdown code fences, no explanations before or after."""
+                    website_system = "You are a world-class web developer. Output ONLY raw HTML code. No markdown, no explanations, no code fences. Start with <!DOCTYPE html> and end with </html>."
+                    GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
+                    gpt_model = GptModelCls()
+                    yield json.dumps({"type": "status", "stage": "generating_website", "message": "GPT OSS is writing HTML, CSS, and JavaScript..."}) + "\n"
+                    html_output = await gpt_model.generate.remote.aio(website_system, website_prompt, temperature=0.7, max_tokens=8192)
+                    # Clean up: strip any markdown code fences the model might add
+                    html_output = html_output.strip()
+                    if html_output.startswith("```html"):
+                        html_output = html_output[7:]
+                    if html_output.startswith("```"):
+                        html_output = html_output[3:]
+                    if html_output.endswith("```"):
+                        html_output = html_output[:-3]
+                    html_output = html_output.strip()
+                    answer = f"Here is your website -- \"{site_title}\". You can preview it below and ask me to make changes like colors, layout, sections, or content.\n\n[WEBSITE_PREVIEW]\n{html_output}\n[/WEBSITE_PREVIEW]"
+                    yield json.dumps({"type": "answer", "content": answer}, ensure_ascii=False) + "\n"
+                    return
+                else:
+                    yield json.dumps({"type": "answer", "content": "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."}) + "\n"
+                    return
         except Exception:
             pass
     
@@ -996,7 +1371,7 @@ If the user is setting a memory or rule, output:
                 elif tool_name == "search_web":
                     query = tool_call.get("query", "")
                     yield json.dumps({"type": "status", "stage": "web_search", "query": query, "message": f"Searching the web for '{query}'..."}) + "\n"
-                    tool_result, sources = execute_web_search(query)
+                    tool_result, sources = await execute_web_search(query)
                     if sources:
                         yield json.dumps({"type": "sources", "sources": sources}) + "\n"
                 
@@ -1010,6 +1385,40 @@ If the user is setting a memory or rule, output:
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                response = "I tried to process your request, but encountered an error. Please try again later."
-    
     yield json.dumps({"type": "answer", "content": response}, ensure_ascii=False) + "\n"
+    
+
+async def generate_conversation_topic(first_question: str, first_answer: str = "") -> str:
+    """
+    Generates a concise 3 to 6 word topic title for a conversation based on the initial question and answer.
+    """
+    clean_q = first_question.strip()
+    clean_a = first_answer.strip()[:300] if first_answer else ""
+    
+    prompt = f"""You are a conversation topic classifier. Generate a concise, descriptive title (3 to 6 words) summarizing what this conversation is about.
+STRICT RULES:
+1. Do not use quotes, punctuation, markdown, or emojis.
+2. Return ONLY the title text, nothing else.
+
+User Question: {clean_q}
+Assistant Answer: {clean_a}
+
+Title:"""
+    system_prompt = "You are a concise title generator. Output only a 3-6 word title with no emojis or punctuation."
+    
+    try:
+        SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
+        model = SmallModelCls()
+        topic = await model.generate.remote.aio(system_message=system_prompt, user_message=prompt, temperature=0.3, max_tokens=25)
+        # Clean up any leftover quotes, newlines, markdown, or emojis
+        topic = topic.strip().strip('"\'`').replace("\n", " ").strip()
+        import re
+        topic = re.sub(r'[\U00010000-\U0010ffff]', '', topic).strip()
+        topic = re.sub(r'^(Topic|Title)\s*:\s*', '', topic, flags=re.IGNORECASE).strip()
+        if not topic or len(topic) < 2:
+            return clean_q[:35]
+        return topic[:50]
+    except Exception as e:
+        print(f"Error generating topic: {e}")
+        return clean_q[:35]
+
