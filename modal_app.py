@@ -600,8 +600,8 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
         "- 'business_name_search': Business Name Search & Reservation on Business Registration Service (BRS), URL: https://brs.ecitizen.go.ke\n"
         "- 'business_name_registration': Business Name Registration (Sole Proprietorship / BN2) on BRS, URL: https://brs.ecitizen.go.ke\n"
         "- 'good_conduct': Police Clearance Certificate on Directorate of Criminal Investigations (DCI), URL: https://dci.ecitizen.go.ke\n"
-        "- 'driving_license_renewal': 3-Year Smart Driving License Renewal on National Transport and Safety Authority (NTSA), URL: https://serviceportal.ntsa.go.ke\n"
-        "- 'pdl_test_booking': Provisional Driving License & Test Booking on NTSA, URL: https://serviceportal.ntsa.go.ke\n"
+        "- 'driving_license_renewal': 3-Year Smart Driving License Renewal or Driving Licence / DL Application/Payment on National Transport and Safety Authority (NTSA). (Matches 'driving license', 'driving licence', 'pay for driving licence', 'smart dl', 'renew driving'). URL: https://serviceportal.ntsa.go.ke\n"
+        "- 'pdl_test_booking': Provisional Driving License / PDL & Test Booking on NTSA, URL: https://serviceportal.ntsa.go.ke\n"
         "- 'passport_application': New/Renewal Passport Application on Directorate of Immigration Services (DIS), URL: https://immigration.ecitizen.go.ke\n"
         "- 'birth_certificate': Birth Certificate Replacement / Application on Civil Registration Services (CRS), URL: https://accounts.ecitizen.go.ke\n"
         "- 'helb_student_loan': Higher Education Financing / HELB Student Loan, URL: https://hef.co.ke\n"
@@ -675,47 +675,104 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
     except Exception as qwen_err:
         print(f"Qwen intent parsing fallback note: {qwen_err}")
 
-    # Fallback response
-    p = clean_prompt.lower()
-    service_id = "business_name_search"
-    target_portal_url = "https://brs.ecitizen.go.ke"
-    is_q = clean_prompt.endswith("?") or any(w in p for w in ["what", "how", "fee", "cost", "requirements"])
+    # Robust multi-service heuristic fallback resolver
+    p = clean_prompt.lower().replace("licence", "license")
+    is_q = clean_prompt.endswith("?") or any(w in p for w in ["what", "how", "requirements", "where", "cost", "fee"])
 
-    if is_q:
-        fallback_msg = "eCitizen provides various online government services including Business Registration (KES 150 search fee), Police Clearance / Good Conduct (KES 1,050), and Driving License renewals. Please state the service you want to apply for."
+    service_id = ""
+    target_portal_url = ""
+    service_title = ""
+    short_name = ""
+
+    if any(w in p for w in ["pdl", "provisional", "driving test", "test booking"]):
+        service_id = "pdl_test_booking"
+        target_portal_url = "https://serviceportal.ntsa.go.ke"
+        service_title = "Provisional Driving License (PDL) & Test Booking"
+        short_name = "PDL & Test Booking"
+    elif any(w in p for w in ["driving", "license", "dl", "ntsa", "driver"]):
+        service_id = "driving_license_renewal"
+        target_portal_url = "https://serviceportal.ntsa.go.ke"
+        service_title = "Smart Driving License Renewal / Application"
+        short_name = "Driving License"
+    elif any(w in p for w in ["good conduct", "police clearance", "dci", "fingerprint", "c24"]):
+        service_id = "good_conduct"
+        target_portal_url = "https://dci.ecitizen.go.ke"
+        service_title = "Police Clearance Certificate (Certificate of Good Conduct)"
+        short_name = "Good Conduct"
+    elif any(w in p for w in ["business", "company", "sole proprietorship", "bn2", "cr14"]):
+        if any(w in p for w in ["search", "check", "reserve", "name"]):
+            service_id = "business_name_search"
+            service_title = "Business Name Search & Reservation"
+            short_name = "Name Search"
+        else:
+            service_id = "business_name_registration"
+            service_title = "Business Name Registration (Sole Proprietorship / BN2)"
+            short_name = "Business Registration"
+        target_portal_url = "https://brs.ecitizen.go.ke"
+    elif any(w in p for w in ["passport", "immigration"]):
+        service_id = "passport_application"
+        target_portal_url = "https://immigration.ecitizen.go.ke"
+        service_title = "Passport Application / Renewal"
+        short_name = "Passport"
+    elif any(w in p for w in ["helb", "student loan", "hef", "scholarship"]):
+        service_id = "helb_student_loan"
+        target_portal_url = "https://hef.co.ke"
+        service_title = "HELB Student Loan & Scholarship"
+        short_name = "HELB / HEF"
+    elif any(w in p for w in ["tax", "kra", "tcc", "itax"]):
+        service_id = "tax_compliance_certificate"
+        target_portal_url = "https://itax.kra.go.ke"
+        service_title = "Tax Compliance Certificate (TCC)"
+        short_name = "KRA TCC"
+    elif any(w in p for w in ["birth", "crs", "born"]):
+        service_id = "birth_certificate"
+        target_portal_url = "https://accounts.ecitizen.go.ke"
+        service_title = "Birth Certificate Application / Replacement"
+        short_name = "Birth Certificate"
+
+    # Default options extraction
+    fallback_options = {}
+    if service_id == "driving_license_renewal":
+        if "1 year" in p or "one year" in p or "interim" in p:
+            fallback_options["licenseDuration"] = "1-Year Interim License (KES 650)"
+        else:
+            fallback_options["licenseDuration"] = "3-Year Smart Driving License (KES 3,050)"
+
+    if is_q or not service_id:
+        msg = f"eCitizen provides services across BRS, NTSA, DCI, and Immigration. For {service_title or 'government services'}, please let me know what you would like to process." if service_id else "I couldn't identify the specific eCitizen service. Please specify if you want Driving License (NTSA), Police Clearance (DCI), or Business Registration (BRS)."
         return {
             "status": "success",
             "source": "fallback",
             "result": {
-                "type": "info",
-                "message": fallback_msg,
-                "service_id": "",
-                "target_portal_url": "",
+                "type": "info" if is_q else "clarification",
+                "message": msg,
+                "service_id": service_id,
+                "target_portal_url": target_portal_url,
                 "task_goal": "",
-                "detected_summary": "General Inquiry",
-                "options": {},
-                "missing_fields": [],
+                "detected_summary": short_name or "General Inquiry",
+                "options": fallback_options,
+                "missing_fields": [] if service_id else ["service"],
                 "ready_to_launch": False,
-                "confidence": 0.7,
-                "reasoning": "Heuristic fallback info response"
+                "confidence": 0.7 if service_id else 0.3,
+                "reasoning": "Heuristic fallback response"
             }
         }
 
     return {
-        "status": "partial",
+        "status": "success",
         "source": "fallback",
         "result": {
             "type": "action_ready",
-            "message": "Ready to navigate eCitizen for your request. Click 'Start Autopilot' to launch.",
+            "message": f"I have prepared the plan for {service_title}. Click 'Start Autopilot' to launch.",
             "service_id": service_id,
             "target_portal_url": target_portal_url,
-            "task_goal": f"Navigate and process {service_id} on eCitizen",
-            "detected_summary": f"Process {service_id}",
-            "options": {},
+            "task_goal": f"Navigate and process {service_title} on eCitizen",
+            "detected_summary": f"Target: {short_name}",
+            "options": fallback_options,
             "missing_fields": [],
             "ready_to_launch": True,
-            "confidence": 0.6,
-            "reasoning": "Heuristic fallback action ready"
+            "confidence": 0.85,
+            "reasoning": f"Matched intent keywords for {service_title}"
         }
     }
 
