@@ -854,6 +854,67 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     import json
     import re
 
+    print(f"[DecideAction INCOMING] URL={req.url} | ElementsCount={len(req.elements)} | Goal='{req.task_goal}'")
+
+    def extract_json_object(text: str):
+        if not text:
+            return None
+        cleaned = re.sub(r'```(?:json)?\s*', '', text)
+        cleaned = re.sub(r'```\s*', '', cleaned).strip()
+        try:
+            return json.loads(cleaned)
+        except Exception:
+            pass
+
+        start = cleaned.find('{')
+        if start != -1:
+            brace_count = 0
+            in_string = False
+            escape = False
+            for i in range(start, len(cleaned)):
+                c = cleaned[i]
+                if escape:
+                    escape = False
+                    continue
+                if c == '\\':
+                    escape = True
+                    continue
+                if c == '"':
+                    in_string = not in_string
+                    continue
+                if not in_string:
+                    if c == '{':
+                        brace_count += 1
+                    elif c == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            candidate = cleaned[start:i+1]
+                            try:
+                                return json.loads(candidate)
+                            except Exception:
+                                fixed = re.sub(r',\s*([\}\]])', r'\1', candidate)
+                                try:
+                                    return json.loads(fixed)
+                                except Exception:
+                                    pass
+                            break
+        return None
+
+    # Guard against completely empty element lists while page is still loading
+    if not req.elements:
+        print(f"[DecideAction RETRY] No interactive elements present on {req.url}. Returning transient wait state.")
+        return {
+            "status": "success",
+            "source": "empty_elements_guard",
+            "decision": {
+                "thought": "Page DOM is still loading or no interactive elements have rendered yet.",
+                "action": "wait",
+                "is_transient": True,
+                "confidence": 0.9,
+                "reason": "Waiting for page elements to render..."
+            }
+        }
+
     # Build structured Accessibility Tree summary for the prompt with container context
     elements_summary = []
     for el in req.elements[:120]:
@@ -938,10 +999,12 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             user_message=user_prompt,
             max_tokens=550
         )
-        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
-        if match:
-            decision = json.loads(match.group(0))
+        decision = extract_json_object(raw_res)
+        if decision and isinstance(decision, dict) and "action" in decision:
+            print(f"[DecideAction SUCCESS] Source=gpt_120b | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
             return {"status": "success", "source": "gpt_120b", "decision": decision}
+        else:
+            print(f"[DecideAction PARSE NOTE] GPT 120B output not clean JSON dict: {str(raw_res)[:180]}. Trying Qwen fallback...")
     except Exception as gpt_err:
         print(f"GPT OSS 120B call note: {gpt_err}. Trying Qwen fallback...")
 
@@ -955,10 +1018,12 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             user_message=user_prompt,
             max_tokens=400
         )
-        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
-        if match:
-            decision = json.loads(match.group(0))
+        decision = extract_json_object(raw_res)
+        if decision and isinstance(decision, dict) and "action" in decision:
+            print(f"[DecideAction SUCCESS] Source=qwen_small | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
             return {"status": "success", "source": "qwen_small", "decision": decision}
+        else:
+            print(f"[DecideAction PARSE NOTE] Qwen output not clean JSON dict: {str(raw_res)[:180]}")
     except Exception as qwen_err:
         print(f"Qwen fallback note: {qwen_err}")
 
@@ -967,6 +1032,7 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         for el in req.elements:
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             if any(w in combined for w in ["sign in", "signin", "log in", "login"]):
+                print(f"[DecideAction HEURISTIC] NTSA SSO sign-in on element {el.id}")
                 return {
                     "status": "success",
                     "source": "heuristic_ntsa_sso",
@@ -981,8 +1047,9 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 }
 
     for el in req.elements:
-        t = (el.text or "").lower()
-        if any(w in t for w in ["search", "business", "application", "continue", "next", "submit", "apply", "brs"]):
+        t = f"{(el.text or '')} {(el.name or '')}".lower()
+        if any(w in t for w in ["search", "business", "application", "continue", "next", "submit", "apply", "brs", "ownership"]):
+            print(f"[DecideAction HEURISTIC] Matched intent on element {el.id}: '{t[:40]}'")
             return {
                 "status": "success",
                 "source": "heuristic_fallback",
@@ -990,15 +1057,17 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     "action": "click",
                     "element_id": el.id,
                     "confidence": 0.8,
-                    "reason": f"Matched action intent keyword on '{el.text}'"
+                    "reason": f"Matched action intent keyword on '{el.text or el.name}'"
                 }
             }
 
+    print(f"[DecideAction FALLBACK WAIT] Returning transient wait for URL: {req.url}")
     return {
         "status": "partial",
         "source": "fallback",
         "decision": {
             "action": "wait",
+            "is_transient": True,
             "element_id": None,
             "confidence": 0.5,
             "reason": "Waiting for page elements to stabilize"
