@@ -915,6 +915,38 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             }
         }
 
+    # Guard: Never attempt automated clicks/fills on central login/authentication pages
+    url_lower = (req.url or "").lower()
+    page_title_lower = (req.page_title or "").lower()
+    is_agency = any(a in url_lower for a in ["brs.", "dci.", "ntsa.", "kra.", "immigration.", "hef.co.ke"])
+    
+    is_auth_page = not is_agency and (
+        "accounts.ecitizen.go.ke" in url_lower or
+        "/login" in url_lower or
+        "/signin" in url_lower or
+        "/otp" in url_lower or
+        "sign in" in page_title_lower or
+        "one log in" in page_title_lower or
+        "ecitizen login" in page_title_lower or
+        any((el.type == "password" or "password" in (el.name or "").lower()) for el in req.elements)
+    )
+
+    if is_auth_page:
+        print(f"[DecideAction AUTH GUARD] Detected login screen on {req.url}. Returning human wait checkpoint.")
+        return {
+            "status": "success",
+            "source": "auth_guard",
+            "decision": {
+                "thought": "The browser is currently on the eCitizen authentication screen. Requiring user to sign in manually.",
+                "action": "wait",
+                "is_transient": False,
+                "element_id": None,
+                "milestone": "Awaiting User Sign-In",
+                "confidence": 1.0,
+                "reason": "Please enter your eCitizen email/ID and password manually. Autopilot will automatically resume once logged in."
+            }
+        }
+
     # Build structured Accessibility Tree summary for the prompt with container context
     elements_summary = []
     for el in req.elements[:120]:
@@ -958,7 +990,7 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         "2. If an unwanted popup, public notice, or modal dialog is blocking the view, dismiss it by clicking its close button (role='button' with name containing 'Close', '×', or 'Dismiss').\n"
         "3. If input fields (role='textbox') for the target form are visible, choose action 'fill' with the appropriate value from Available Form Data.\n"
         "4. If a submit/continue/proceed/next button is visible after filling fields, choose action 'click' on that button.\n"
-        "5. If on a login or SMS OTP verification screen that requires user credentials, choose action 'wait'.\n"
+        "5. If on a login or SMS OTP verification screen that requires user credentials (accounts.ecitizen.go.ke, password inputs, etc.), choose action 'wait'. NEVER attempt to fill credentials or click 'Sign in' on login pages.\n"
         "6. If reached a statutory fee / payment screen, choose action 'wait' for payment confirmation.\n"
         "7. If an [ALERT / RE-INSPECTION] notice is present, the previous click FAILED. Do NOT repeat the same element_id. Choose a DIFFERENT actionable control.\n"
         "8. If the current URL is completely off-target (e.g. still on landing portal when target is BRS), you can use action 'navigate' with target_url='https://brs.ecitizen.go.ke'.\n"
@@ -1046,20 +1078,21 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
-    for el in req.elements:
-        t = f"{(el.text or '')} {(el.name or '')}".lower()
-        if any(w in t for w in ["search", "business", "application", "continue", "next", "submit", "apply", "brs", "ownership"]):
-            print(f"[DecideAction HEURISTIC] Matched intent on element {el.id}: '{t[:40]}'")
-            return {
-                "status": "success",
-                "source": "heuristic_fallback",
-                "decision": {
-                    "action": "click",
-                    "element_id": el.id,
-                    "confidence": 0.8,
-                    "reason": f"Matched action intent keyword on '{el.text or el.name}'"
+    if not is_auth_page:
+        for el in req.elements:
+            t = f"{(el.text or '')} {(el.name or '')}".lower()
+            if any(w in t for w in ["search", "business", "application", "continue", "next", "submit", "apply", "brs", "ownership"]):
+                print(f"[DecideAction HEURISTIC] Matched intent on element {el.id}: '{t[:40]}'")
+                return {
+                    "status": "success",
+                    "source": "heuristic_fallback",
+                    "decision": {
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.8,
+                        "reason": f"Matched action intent keyword on '{el.text or el.name}'"
+                    }
                 }
-            }
 
     print(f"[DecideAction FALLBACK WAIT] Returning transient wait for URL: {req.url}")
     return {
