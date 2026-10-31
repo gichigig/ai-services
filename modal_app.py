@@ -2049,6 +2049,51 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=5" in req.url or "application documents" in (req.page_title or "").lower()):
+        # Check if a signed BN-2 document has already been attached
+        has_uploaded_doc = any(
+            ("remove this file" in f"{(el.text or '')} {(el.name or '')}".lower()) or
+            any((el.text or "").lower().strip().endswith(ext) for ext in [".pdf", ".jpg", ".png", ".jpeg"]) or
+            (el.type == "file" and bool(getattr(el, "value", None)))
+            for el in req.elements
+        )
+
+        if has_uploaded_doc:
+            # Document is uploaded. Click Next to proceed to Declaration
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                if el.tag == "button" and "next" in combined:
+                    print(f"[DecideAction HEURISTIC] BN-2 document detected. Click 'Next' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "heuristic_application_documents_next",
+                        "decision": {
+                            "thought": "Signed BN-2 document has been uploaded. Clicking 'Next' to advance to Declaration.",
+                            "action": "click",
+                            "element_id": el.id,
+                            "confidence": 0.99,
+                            "milestone": "Proceed to Declaration",
+                            "reason": "Signed BN-2 form uploaded. Advancing to Declaration step."
+                        }
+                    }
+
+        # Document is NOT uploaded yet: Return Human-in-the-Loop Wait Checkpoint
+        print(f"[DecideAction HEURISTIC] Step 5 awaiting signed BN-2 upload on {req.url}")
+        return {
+            "status": "success",
+            "source": "heuristic_application_documents_wait",
+            "decision": {
+                "thought": "Statutory BN-2 form must be downloaded, signed by proprietor, and uploaded.",
+                "action": "wait",
+                "is_transient": False,
+                "element_id": None,
+                "handoff_trigger": "file_upload",
+                "milestone": "Awaiting Signed BN-2 Upload",
+                "confidence": 1.0,
+                "reason": "Please click 'CLICK HERE TO DOWNLOAD BN-2 form' to download your pre-filled form, physically sign it, scan or save as PDF/image, and upload it using 'Choose File'. Autopilot will automatically resume once the document is attached."
+            }
+        }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
