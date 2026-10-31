@@ -1043,6 +1043,33 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         "- The user must log in manually. Never request or store passwords, OTPs or PINs.\n"
         "- Pause on login/OTP screens. Never bypass authentication challenges.\n"
         "- Always require explicit user confirmation (requires_user_approval=true) before: Final application submission, Government fee payments, Legal declarations, Signing agreements, Cancelling/withdrawing applications, Changing important personal info, or Irreversible operations.\n\n"
+        "HUMAN-IN-THE-LOOP OPERATING POLICY:\n"
+        "WHEN TO REQUEST HUMAN INTERACTION:\n"
+        "Request human intervention (action='wait' with is_transient=false) whenever:\n"
+        "1. Manual login is required.\n"
+        "2. OTP verification is required.\n"
+        "3. CAPTCHA or Cloudflare challenge appears.\n"
+        "4. The website requires identity verification.\n"
+        "5. Required form information is unavailable in Available Form Data.\n"
+        "6. A document needs to be manually selected or uploaded.\n"
+        "7. The browser presents an unexpected security challenge.\n"
+        "8. A sensitive operation requires user approval.\n"
+        "9. The intended browser action cannot be identified confidently.\n\n"
+        "HANDOFF & WAITING RULES:\n"
+        "When human intervention is required, choose action 'wait'. While waiting:\n"
+        "- Do not click buttons or fill forms.\n"
+        "- Do not navigate automatically or interfere with manual user interaction.\n"
+        "- Do not repeatedly refresh the website.\n"
+        "- Do not assume that inactivity means completion.\n"
+        "- Do not continue merely because time has passed.\n"
+        "- Explain exactly what the user must do in 'reason' and 'user_action_required'.\n\n"
+        "VERIFICATION & RESUMPTION RULES:\n"
+        "- Human confirmation initiates verification. Successful verification authorizes resumption. Never confuse the two.\n"
+        "- For login, verify the authenticated session.\n"
+        "- For uploads, verify that the intended file was selected.\n"
+        "- For payments, verify the authoritative payment status on page.\n"
+        "- For application submissions, verify the official submission confirmation.\n"
+        "- Resume only when the required condition has been independently verified.\n\n"
         "FORM FILLING:\n"
         "- Use ONLY user-provided or authorized information from Available Form Data.\n"
         "- NEVER fabricate personal information, national IDs, names, or addresses.\n"
@@ -1052,7 +1079,9 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         "NO EVIDENCE = NO ACTION.\n"
         "NO VALIDATION = NO CLICK.\n"
         "NO VERIFICATION = NO SUCCESS CLAIM.\n"
-        "WHEN UNCERTAIN = STOP AND ASK.\n\n"
+        "WHEN UNCERTAIN = STOP AND ASK.\n"
+        "HUMAN CONFIRMATION INITIATES VERIFICATION.\n"
+        "SUCCESSFUL VERIFICATION AUTHORIZES RESUMPTION.\n\n"
         "Respond ONLY with a valid JSON object matching this schema:\n"
         "{\n"
         '  "thought": "<detailed chain-of-thought analyzing URL, page title, headings, accessibility tree, previous history, and safety constraints>",\n'
@@ -1062,6 +1091,8 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         '  "target_url": "<url string to navigate to, or null>",\n'
         '  "milestone": "<short 2-4 word status, e.g. Ownership Details, Select BRS, Enter Name, Payment Checkpoint>",\n'
         '  "requires_user_approval": <boolean: true if this action is payment, final submission, legal declaration, or cancellation>,\n'
+        '  "handoff_trigger": "<login | otp | captcha | file_upload | payment | approval | missing_info | null>",\n'
+        '  "user_action_required": "<clear instructions for the user if handoff is needed, or null>",\n'
         '  "confidence": <float between 0.0 and 1.0>,\n'
         '  "reason": "<clear explanation adhering to the master operating principles>"\n'
         "}"
