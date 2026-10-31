@@ -1295,6 +1295,25 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
+    if "brsv2.ecitizen.go.ke" in req.url and "/registries/brs/dashboard" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "apply" in combined and ("business name" in container or "business name" in combined or "registration of a business name" in container):
+                print(f"[DecideAction HEURISTIC] BRS V2 Business Name Registration on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_register_business_name",
+                    "decision": {
+                        "thought": "Detected BRS V2 dashboard. Clicking 'Apply' under 'Registration Of A Business Name' (runner will auto-scroll into view).",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Apply Business Name",
+                        "reason": "Clicking 'Apply' to initiate Registration of a Business Name"
+                    }
+                }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
