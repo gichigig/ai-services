@@ -1314,6 +1314,65 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
+    if "brsv2.ecitizen.go.ke" in req.url and "/apply/19" in req.url:
+        # Check for unfilled Proposed Names input
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            if el.tag == "input" and ("preferred name" in combined or "proposed name" in combined):
+                val = (req.form_values or {}).get("proposed_name") or (req.form_values or {}).get("businessName")
+                if val:
+                    print(f"[DecideAction HEURISTIC] Fill proposed business name on element {el.id}: {val}")
+                    return {
+                        "status": "success",
+                        "source": "heuristic_fill_proposed_name",
+                        "decision": {
+                            "thought": f"Filling proposed business name '{val}' in priority order.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": val,
+                            "confidence": 0.99,
+                            "milestone": "Proposed Business Name",
+                            "reason": f"Entering primary proposed business name: {val}"
+                        }
+                    }
+        # Check for Affiliated to an Existing Entity dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("affiliated" in combined or "affiliated" in container) and ("choose" in combined or el.tag == "select"):
+                affil_val = (req.form_values or {}).get("isAffiliated", "No")
+                print(f"[DecideAction HEURISTIC] Select affiliation '{affil_val}' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_select_affiliation",
+                    "decision": {
+                        "thought": f"Selecting '{affil_val}' for Affiliated to an Existing Entity.",
+                        "action": "select",
+                        "element_id": el.id,
+                        "fill_value": affil_val,
+                        "confidence": 0.99,
+                        "milestone": "Affiliation Dropdown",
+                        "reason": f"Setting entity affiliation to '{affil_val}'"
+                    }
+                }
+        # Once filled, click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction HEURISTIC] Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_proposed_names_next",
+                    "decision": {
+                        "thought": "All proposed name details are complete. Clicking 'Next' to proceed to Applicant Details.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Applicant Details",
+                        "reason": "Clicking 'Next' to advance to Applicant Details step"
+                    }
+                }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
