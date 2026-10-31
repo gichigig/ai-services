@@ -1373,6 +1373,85 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=1" in req.url or "applicant details" in (req.page_title or "").lower()):
+        # Check for Capacity dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("capacity" in combined or "capacity" in container) and ("choose" in combined or el.tag == "select"):
+                cap_val = (req.form_values or {}).get("capacity", "Owner")
+                print(f"[DecideAction HEURISTIC] Select capacity '{cap_val}' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_applicant_capacity",
+                    "decision": {
+                        "thought": f"Selecting '{cap_val}' for Applicant Capacity.",
+                        "action": "select",
+                        "element_id": el.id,
+                        "fill_value": cap_val,
+                        "confidence": 0.99,
+                        "milestone": "Applicant Capacity",
+                        "reason": f"Setting capacity to '{cap_val}'"
+                    }
+                }
+        # Check for Address textbox
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("address" in combined or "address" in container):
+                addr_val = (req.form_values or {}).get("postalAddress") or (req.form_values or {}).get("address") or "P.O. Box 100-00100 Nairobi"
+                print(f"[DecideAction HEURISTIC] Fill address on element {el.id}: {addr_val}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_applicant_address",
+                    "decision": {
+                        "thought": f"Filling postal address '{addr_val}'.",
+                        "action": "fill",
+                        "element_id": el.id,
+                        "fill_value": addr_val,
+                        "confidence": 0.99,
+                        "milestone": "Applicant Address",
+                        "reason": f"Entering applicant postal address: {addr_val}"
+                    }
+                }
+        # Check for Postal Code
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag == "select"):
+                pc_val = (req.form_values or {}).get("postalCode", "00100")
+                print(f"[DecideAction HEURISTIC] Select postal code '{pc_val}' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_applicant_postal_code",
+                    "decision": {
+                        "thought": f"Setting postal code '{pc_val}'.",
+                        "action": "select",
+                        "element_id": el.id,
+                        "fill_value": pc_val,
+                        "confidence": 0.99,
+                        "milestone": "Applicant Postal Code",
+                        "reason": f"Setting postal code to '{pc_val}'"
+                    }
+                }
+        # Click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction HEURISTIC] Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_applicant_details_next",
+                    "decision": {
+                        "thought": "Applicant details are complete. Clicking 'Next' to advance to Nature Of Business.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Nature of Business",
+                        "reason": "Clicking 'Next' to proceed to Nature of Business step"
+                    }
+                }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
