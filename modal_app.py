@@ -1454,6 +1454,65 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=2" in req.url or "nature of business" in (req.page_title or "").lower()):
+        # Check for Nature of Business dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("nature of business" in combined or "nature of business" in container) and ("choose" in combined or el.tag == "select"):
+                nature_val = (req.form_values or {}).get("natureOfBusiness", "OTHER")
+                print(f"[DecideAction HEURISTIC] Select Nature of Business '{nature_val}' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_nature_of_business_select",
+                    "decision": {
+                        "thought": f"Selecting '{nature_val}' for Nature of Business.",
+                        "action": "select",
+                        "element_id": el.id,
+                        "fill_value": nature_val,
+                        "confidence": 0.99,
+                        "milestone": "Nature of Business Selection",
+                        "reason": f"Setting nature of business to '{nature_val}'"
+                    }
+                }
+        # Check for Describe Nature of Business textarea
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("textarea", "input") and ("describe" in combined or "describe" in container or "nature" in combined):
+                desc_val = (req.form_values or {}).get("businessDescription") or (req.form_values or {}).get("natureDescription") or "General supplies, retail trading, and related commercial services."
+                print(f"[DecideAction HEURISTIC] Fill business description on element {el.id}: {desc_val}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_nature_of_business_desc",
+                    "decision": {
+                        "thought": f"Describing nature of business: '{desc_val}'.",
+                        "action": "fill",
+                        "element_id": el.id,
+                        "fill_value": desc_val,
+                        "confidence": 0.99,
+                        "milestone": "Nature of Business Description",
+                        "reason": f"Entering nature of business description: {desc_val}"
+                    }
+                }
+        # Click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction HEURISTIC] Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_nature_of_business_next",
+                    "decision": {
+                        "thought": "Nature of business is complete. Clicking 'Next' to proceed to Registered Office Address.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Registered Office Address",
+                        "reason": "Clicking 'Next' to advance to Registered Office Address step"
+                    }
+                }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
