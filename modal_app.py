@@ -920,7 +920,7 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     # Guard: Never attempt automated clicks/fills on central login/authentication pages
     url_lower = (req.url or "").lower()
     page_title_lower = (req.page_title or "").lower()
-    is_agency = any(a in url_lower for a in ["brs.", "dci.", "ntsa.", "kra.", "immigration.", "hef.co.ke"])
+    is_agency = any(a in url_lower for a in ["brs.", "brsv2.", "brs", "dci.", "ntsa.", "kra.", "immigration.", "hef.co.ke"])
     
     is_auth_page = not is_agency and (
         "accounts.ecitizen.go.ke" in url_lower or
@@ -1218,6 +1218,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                         "confidence": 0.99,
                         "milestone": "NTSA SSO Login",
                         "reason": "Clicking 'Sign in' to authenticate via eCitizen SSO"
+                    }
+                }
+
+    if "brsv2.ecitizen.go.ke" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if "login with ecitizen" in combined or ("login" in combined and "ecitizen" in combined):
+                print(f"[DecideAction HEURISTIC] BRS V2 SSO sign-in on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_brsv2_sso",
+                    "decision": {
+                        "thought": "Detected BRS V2 SSO gateway. Clicking 'Login with eCitizen' to perform single sign-on handshake.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "BRS V2 SSO Login",
+                        "reason": "Clicking 'Login with eCitizen' to authenticate via active eCitizen session"
                     }
                 }
 
