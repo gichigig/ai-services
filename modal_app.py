@@ -1379,7 +1379,8 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("capacity" in combined or "capacity" in container) and ("choose" in combined or el.tag == "select"):
-                cap_val = (req.form_values or {}).get("capacity", "Owner")
+                raw_cap = (req.form_values or {}).get("capacity", "Proprietor")
+                cap_val = "Proprietor" if str(raw_cap).lower() in ("owner", "self", "proprietor", "") else str(raw_cap)
                 print(f"[DecideAction HEURISTIC] Select capacity '{cap_val}' on element {el.id}")
                 return {
                     "status": "success",
@@ -1418,8 +1419,9 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         for el in req.elements:
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
-            if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag == "select"):
-                pc_val = (req.form_values or {}).get("postalCode", "00100")
+            if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input")):
+                raw_pc = (req.form_values or {}).get("postalCode", "00100 - G.P.O NAIROBI")
+                pc_val = "00100 - G.P.O NAIROBI" if "00100" in str(raw_pc) else str(raw_pc)
                 print(f"[DecideAction HEURISTIC] Select postal code '{pc_val}' on element {el.id}")
                 return {
                     "status": "success",
