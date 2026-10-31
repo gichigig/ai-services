@@ -2094,6 +2094,45 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             }
         }
 
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=6" in req.url or "declaration" in (req.page_title or "").lower()):
+        # Check if declaration checkbox is present and needs to be checked
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if (el.role == "checkbox" or el.tag == "input" or "checkbox" in combined) and ("confirm" in combined or "declaration" in combined or "registrar" in combined):
+                is_checked = getattr(el, "checked", False)
+                if not is_checked:
+                    print(f"[DecideAction HEURISTIC] Check statutory declaration checkbox on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "heuristic_declaration_checkbox",
+                        "decision": {
+                            "thought": "Checking statutory confirmation checkbox affirming that all required application information has been provided.",
+                            "action": "click",
+                            "element_id": el.id,
+                            "confidence": 0.99,
+                            "milestone": "Statutory Declaration",
+                            "reason": "Checking declaration checkbox to certify application particulars"
+                        }
+                    }
+
+        # Click Preview button
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and ("preview" in combined or "next" in combined or "proceed" in combined):
+                print(f"[DecideAction HEURISTIC] Click 'Preview' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_declaration_preview",
+                    "decision": {
+                        "thought": "Statutory declaration confirmed. Clicking 'Preview' to proceed to final application review.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Application Preview",
+                        "reason": "Clicking 'Preview' to view full application before final submission"
+                    }
+                }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
