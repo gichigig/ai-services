@@ -922,7 +922,7 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     page_title_lower = (req.page_title or "").lower()
     is_agency = any(a in url_lower for a in ["brs.", "brsv2.", "brs", "dci.", "ntsa.", "kra.", "immigration.", "hef.co.ke"])
     
-    is_auth_page = not is_agency and "/account-switcher" not in url_lower and (
+    is_auth_page = not is_agency and "/account-switcher" not in url_lower and "/authorize" not in url_lower and (
         "accounts.ecitizen.go.ke" in url_lower or
         "/login" in url_lower or
         "/signin" in url_lower or
@@ -1255,6 +1255,43 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                         "confidence": 0.99,
                         "milestone": "Select Personal Account",
                         "reason": "Selecting personal account to complete login into BRS V2"
+                    }
+                }
+
+    if "accounts.ecitizen.go.ke" in req.url and "/authorize" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if "proceed" in combined:
+                print(f"[DecideAction HEURISTIC] OAuth consent 'Proceed' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_oauth_proceed",
+                    "decision": {
+                        "thought": "Detected eCitizen OAuth authorization consent screen. Clicking 'Proceed' to complete authorization handshake.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "OAuth Consent",
+                        "reason": "Clicking 'Proceed' to authorize single sign-on into BRS V2"
+                    }
+                }
+
+    if "brsv2.ecitizen.go.ke" in req.url and "/switcher" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "proceed" in combined and ("companies registry" in container or "companies" in container or "responsible for registering" in container):
+                print(f"[DecideAction HEURISTIC] BRS V2 Switcher Companies Registry selection on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_companies_registry",
+                    "decision": {
+                        "thought": "Detected BRS V2 Registry Switcher. Clicking 'Proceed' under 'Companies Registry Services' for business name registration.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Companies Registry",
+                        "reason": "Selecting Companies Registry Services to register business name"
                     }
                 }
 
