@@ -922,7 +922,7 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     page_title_lower = (req.page_title or "").lower()
     is_agency = any(a in url_lower for a in ["brs.", "brsv2.", "brs", "dci.", "ntsa.", "kra.", "immigration.", "hef.co.ke"])
     
-    is_auth_page = not is_agency and (
+    is_auth_page = not is_agency and "/account-switcher" not in url_lower and (
         "accounts.ecitizen.go.ke" in url_lower or
         "/login" in url_lower or
         "/signin" in url_lower or
@@ -1236,6 +1236,25 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                         "confidence": 0.99,
                         "milestone": "BRS V2 SSO Login",
                         "reason": "Clicking 'Login with eCitizen' to authenticate via active eCitizen session"
+                    }
+                }
+
+    if "account-switcher" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "personal" in combined or "personal" in container or any(k in combined for k in ["42761734", "proceed to your personal account", "bildad"]):
+                print(f"[DecideAction HEURISTIC] Account Switcher personal account selection on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_account_switcher",
+                    "decision": {
+                        "thought": "Detected eCitizen account switcher. Selecting 'Personal Account' to complete OAuth handshake and proceed to BRS V2.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Select Personal Account",
+                        "reason": "Selecting personal account to complete login into BRS V2"
                     }
                 }
 
