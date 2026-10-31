@@ -1513,6 +1513,206 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=3" in req.url or "primary address" in (req.page_title or "").lower() or "registered office" in (req.page_title or "").lower()):
+        # Check County dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("county" in combined or "county" in container) and ("choose" in combined or el.tag == "select"):
+                c_val = (req.form_values or {}).get("county", "NAIROBI")
+                print(f"[DecideAction HEURISTIC] Select County '{c_val}' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_county",
+                    "decision": {
+                        "thought": f"Selecting County '{c_val}'.",
+                        "action": "select",
+                        "element_id": el.id,
+                        "fill_value": c_val,
+                        "confidence": 0.99,
+                        "milestone": "Select County",
+                        "reason": f"Setting county to '{c_val}'"
+                    }
+                }
+        # Check District dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("district" in combined or "district" in container) and ("choose" in combined or el.tag == "select"):
+                d_val = (req.form_values or {}).get("district", "NAIROBI CENTRAL")
+                print(f"[DecideAction HEURISTIC] Select District '{d_val}' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_district",
+                    "decision": {
+                        "thought": f"Selecting District '{d_val}'.",
+                        "action": "select",
+                        "element_id": el.id,
+                        "fill_value": d_val,
+                        "confidence": 0.99,
+                        "milestone": "Select District",
+                        "reason": f"Setting district to '{d_val}'"
+                    }
+                }
+        # Check Locality dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("locality" in combined or "locality" in container) and ("choose" in combined or el.tag == "select"):
+                loc_val = (req.form_values or {}).get("locality", "CENTRAL BUSINESS DISTRICT")
+                print(f"[DecideAction HEURISTIC] Select Locality '{loc_val}' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_locality",
+                    "decision": {
+                        "thought": f"Selecting Locality '{loc_val}'.",
+                        "action": "select",
+                        "element_id": el.id,
+                        "fill_value": loc_val,
+                        "confidence": 0.99,
+                        "milestone": "Select Locality",
+                        "reason": f"Setting locality to '{loc_val}'"
+                    }
+                }
+        # Check Building/Plot No
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("building" in combined or "plot" in combined or "building" in container or "plot" in container):
+                bldg_val = (req.form_values or {}).get("buildingName") or "Upper Hill Chambers"
+                print(f"[DecideAction HEURISTIC] Fill Building Name on element {el.id}: {bldg_val}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_building",
+                    "decision": {
+                        "thought": f"Entering building name '{bldg_val}'.",
+                        "action": "fill",
+                        "element_id": el.id,
+                        "fill_value": bldg_val,
+                        "confidence": 0.99,
+                        "milestone": "Building Name",
+                        "reason": f"Filling building name/plot: {bldg_val}"
+                    }
+                }
+        # Check Street/Road
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("street" in combined or "road" in combined or "street" in container or "road" in container):
+                street_val = (req.form_values or {}).get("streetRoad") or "Ngong Avenue"
+                print(f"[DecideAction HEURISTIC] Fill Street/Road on element {el.id}: {street_val}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_street",
+                    "decision": {
+                        "thought": f"Entering street '{street_val}'.",
+                        "action": "fill",
+                        "element_id": el.id,
+                        "fill_value": street_val,
+                        "confidence": 0.99,
+                        "milestone": "Street/Road",
+                        "reason": f"Filling street/road: {street_val}"
+                    }
+                }
+        # Check Postal Address
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("postal address" in combined or "postal address" in container):
+                p_addr = (req.form_values or {}).get("businessPostalAddress") or (req.form_values or {}).get("postalAddress") or "P. O. Box 30404"
+                print(f"[DecideAction HEURISTIC] Fill Postal Address on element {el.id}: {p_addr}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_postal_address",
+                    "decision": {
+                        "thought": f"Entering postal address '{p_addr}'.",
+                        "action": "fill",
+                        "element_id": el.id,
+                        "fill_value": p_addr,
+                        "confidence": 0.99,
+                        "milestone": "Postal Address",
+                        "reason": f"Filling postal address: {p_addr}"
+                    }
+                }
+        # Check Postal Code
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input")):
+                raw_pc = (req.form_values or {}).get("businessPostalCode") or (req.form_values or {}).get("postalCode", "00100 - G.P.O NAIROBI")
+                pc_val = "00100 - G.P.O NAIROBI" if "00100" in str(raw_pc) else str(raw_pc)
+                print(f"[DecideAction HEURISTIC] Select postal code '{pc_val}' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_postal_code",
+                    "decision": {
+                        "thought": f"Setting postal code '{pc_val}'.",
+                        "action": "select",
+                        "element_id": el.id,
+                        "fill_value": pc_val,
+                        "confidence": 0.99,
+                        "milestone": "Postal Code",
+                        "reason": f"Setting postal code to '{pc_val}'"
+                    }
+                }
+        # Check Mobile Number
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("mobile" in combined or "phone" in combined or "mobile" in container or "phone" in container):
+                phone_val = (req.form_values or {}).get("businessPhone") or (req.form_values or {}).get("phoneNumber") or "+254700000000"
+                print(f"[DecideAction HEURISTIC] Fill Mobile Number on element {el.id}: {phone_val}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_mobile",
+                    "decision": {
+                        "thought": f"Entering mobile number '{phone_val}'.",
+                        "action": "fill",
+                        "element_id": el.id,
+                        "fill_value": phone_val,
+                        "confidence": 0.99,
+                        "milestone": "Mobile Number",
+                        "reason": f"Filling business mobile number: {phone_val}"
+                    }
+                }
+        # Check Company Email Address
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("email" in combined or "email" in container):
+                email_val = (req.form_values or {}).get("businessEmail") or (req.form_values or {}).get("email") or "info@business.co.ke"
+                print(f"[DecideAction HEURISTIC] Fill Email on element {el.id}: {email_val}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_email",
+                    "decision": {
+                        "thought": f"Entering company email '{email_val}'.",
+                        "action": "fill",
+                        "element_id": el.id,
+                        "fill_value": email_val,
+                        "confidence": 0.99,
+                        "milestone": "Company Email",
+                        "reason": f"Filling company email: {email_val}"
+                    }
+                }
+        # Click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction HEURISTIC] Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_address_next",
+                    "decision": {
+                        "thought": "Registered office address details are complete. Clicking 'Next' to advance to Ownership Information.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Ownership Information",
+                        "reason": "Clicking 'Next' to advance to Ownership Information step"
+                    }
+                }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
