@@ -844,6 +844,8 @@ class EcitizenActionRequest(BaseModel):
     action_history: Optional[List[Dict[str, Any]]] = None
     last_error: Optional[str] = None
     model_name: Optional[str] = "gpt_120b"
+    screenshot_b64: Optional[str] = None
+    viewport: Optional[Dict[str, Any]] = None
 
 @web_app.post("/ecitizen/decide-action")
 async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
@@ -1070,6 +1072,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         "- For payments, verify the authoritative payment status on page.\n"
         "- For application submissions, verify the official submission confirmation.\n"
         "- Resume only when the required condition has been independently verified.\n\n"
+        "VISUAL RECOGNITION AND SCREENSHOT RECOVERY POLICY:\n"
+        "1. DOM and accessibility inspection is your primary method of identifying browser controls.\n"
+        "2. Visual recognition assists when:\n"
+        "   - A target cannot be identified through DOM inspection.\n"
+        "   - The page contains visually complex layouts.\n"
+        "   - A menu, modal, dropdown or overlay is difficult to interpret.\n"
+        "   - The page layout differs from previously observed layouts.\n"
+        "   - An unexpected page state is encountered.\n"
+        "3. When visual targets are identified, provide the visual target description, approximate location, element type, visible label, and surrounding context.\n"
+        "4. Distinguish between observed information and assumptions. Never invent a button, link, field, or page element.\n"
+        "5. All visual targets must be cross-checked against the current DOM whenever possible.\n"
+        "6. Coordinates must account for viewport dimensions, scrolling, browser zoom and device pixel ratio. Stale screenshot coordinates must never be reused.\n"
+        "7. If a visual target cannot be matched to a valid DOM element, do NOT execute the action automatically unless authorized and validated.\n"
+        "8. The vision model must NEVER independently authorize: fee payments, final submissions, legal declarations, signing, or cancellations. These require explicit human approval (requires_user_approval=true) even with high confidence.\n"
+        "9. If DOM inspection and visual recognition both fail, STOP and request human assistance (action='wait').\n"
+        "10. Every visual action must be followed by a fresh snapshot to verify the resulting page state.\n"
+        "11. Privacy safeguards: sensitive personal information must not be unnecessarily transmitted or retained.\n"
+        "CORE RULE: Vision assists identification; the validation engine controls execution.\n\n"
         "FORM FILLING:\n"
         "- Use ONLY user-provided or authorized information from Available Form Data.\n"
         "- NEVER fabricate personal information, national IDs, names, or addresses.\n"
@@ -1091,6 +1111,8 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         '  "target_url": "<url string to navigate to, or null>",\n'
         '  "milestone": "<short 2-4 word status, e.g. Ownership Details, Select BRS, Enter Name, Payment Checkpoint>",\n'
         '  "requires_user_approval": <boolean: true if this action is payment, final submission, legal declaration, or cancellation>,\n'
+        '  "visual_target": "<description of visual target if vision was used, or null>",\n'
+        '  "visual_coordinates": <{"x": int, "y": int} or null>,\n'
         '  "handoff_trigger": "<login | otp | captcha | file_upload | payment | approval | missing_info | null>",\n'
         '  "user_action_required": "<clear instructions for the user if handoff is needed, or null>",\n'
         '  "confidence": <float between 0.0 and 1.0>,\n'
