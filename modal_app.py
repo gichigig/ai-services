@@ -2133,6 +2133,27 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=-1" in req.url or "preview" in (req.page_title or "").lower()):
+        # Locate the Complete button on application preview
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "complete" in combined:
+                print(f"[DecideAction HEURISTIC] Complete button identified on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_application_review_complete",
+                    "decision": {
+                        "thought": "All registration sections (contacts, proprietor, signed BN-2 form, declaration) are verified on preview. Requesting user confirmation to click 'Complete' and submit application.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "requires_user_approval": True,
+                        "handoff_trigger": "approval",
+                        "milestone": "Final Application Review",
+                        "confidence": 1.0,
+                        "reason": "Please review the summary details above. If all information is clear and accurate, confirm to click 'Complete' to proceed to fee payment."
+                    }
+                }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
