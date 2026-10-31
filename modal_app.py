@@ -2154,6 +2154,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     }
                 }
 
+    if "brsv2.ecitizen.go.ke" in req.url and ("/payment" in req.url or "payment" in (req.page_title or "").lower()):
+        print(f"[DecideAction HEURISTIC] Payment screen detected on {req.url}. Halting with terminal human handoff.")
+        return {
+            "status": "success",
+            "source": "heuristic_payment_terminal_checkpoint",
+            "decision": {
+                "thought": "The application has reached the Pesaflow payment gateway. The user must manually select their payment mode (e.g. M-Pesa) and authorize the fee payment of KES 925.00. This concludes the autonomous session.",
+                "action": "wait",
+                "is_transient": False,
+                "element_id": None,
+                "handoff_trigger": "payment",
+                "milestone": "Statutory Payment Required",
+                "confidence": 1.0,
+                "reason": "Application successfully filed with BRS. Statutory invoice of KES 925.00 generated on Pesaflow. Please choose your payment mode (M-Pesa, Card, Bank) on the screen to complete the registration. Autopilot session complete."
+            }
+        }
+
     if not is_auth_page:
         for el in req.elements:
             t = f"{(el.text or '')} {(el.name or '')}".lower()
