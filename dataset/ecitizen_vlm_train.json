@@ -1,0 +1,2747 @@
+[
+  {
+    "id": "step_03_confirm_modal_base_task1_step_id",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_03_confirm_modal\",\n  \"step_title\": \"BRS V2 Notice Modal Confirmation\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_base_task3_grounding",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Registered Office Address Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_bright_task3_grounding",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Apply now\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(480,580,530,680)<|box_end|> {\"point\": [630, 505], \"target\": \"Apply now\", \"role\": \"button\", \"container\": \"Brs V2 Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_bright_task4_safety",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_base_task2_next_action",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 3: Nature Of Business. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Nature Of Business Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Nature Of Business Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_contrast_task2_next_action",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS V2 Notice Modal Confirmation. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply Now \\u00bb\",\n  \"container\": \"Modal Notice: BRS V2\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply Now \\u00bb' in 'Modal Notice: BRS V2'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_base_task2_next_action",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen OAuth Consent Authorization. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Proceed\",\n  \"container\": \"Authorization Consent Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Proceed' in 'Authorization Consent Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_bright_task3_grounding",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Applicant Details Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_04_brsv2_sso_login_bright_task1_step_id",
+    "step_id": "step_04_brsv2_sso_login",
+    "image": "ai-service/dataset/images/step_04_brsv2_sso_login_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_04_brsv2_sso_login\",\n  \"step_title\": \"BRS V2 Single Sign-On (SSO) Gateway\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_bright_task3_grounding",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Dully signed BN - 2 Form Upload\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(470,275,540,620)<|box_end|> {\"point\": [448, 505], \"target\": \"Dully signed BN - 2 Form Upload\", \"role\": \"file_upload\", \"container\": \"Application Documents Step Form\", \"action\": \"wait\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_base_task1_step_id",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_13_ownership_information\",\n  \"step_title\": \"Business Name Registration - Step 5: Ownership Information\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_contrast_task2_next_action",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 6: Application Documents (BN-2 Form Sign & Upload). Navigating forward toward business name registration.\",\n  \"action\": \"wait\",\n  \"target\": \"Dully signed BN - 2 Form Upload\",\n  \"container\": \"Application Documents Step Form\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute wait on 'Dully signed BN - 2 Form Upload' in 'Application Documents Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_bright_task2_next_action",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS V2 Registry Selection - Companies Registry Services. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Proceed\",\n  \"container\": \"Companies Registry Services Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Proceed' in 'Companies Registry Services Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_bright_task2_next_action",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 9: Statutory Fee Payment & Session Handoff. Navigating forward toward business name registration.\",\n  \"action\": \"wait\",\n  \"target\": \"Pesaflow Payment Options\",\n  \"container\": \"Pesaflow Checkout Portal\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute wait on 'Pesaflow Payment Options' in 'Pesaflow Checkout Portal'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_bright_task3_grounding",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Personal Account\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(380,360,480,640)<|box_end|> {\"point\": [500, 430], \"target\": \"Personal Account\", \"role\": \"card_button\", \"container\": \"Select Account Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_base_task2_next_action",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS Dashboard - Start Application. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Make Application\",\n  \"container\": \"My Applications Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Make Application' in 'My Applications Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_base_task1_step_id",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_07_select_companies_registry\",\n  \"step_title\": \"BRS V2 Registry Selection - Companies Registry Services\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_bright_task2_next_action",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen Central Authentication Checkpoint. Navigating forward toward business name registration.\",\n  \"action\": \"wait\",\n  \"target\": \"Sign In Form\",\n  \"container\": \"One Log In Card\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute wait on 'Sign In Form' in 'One Log In Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_contrast_task3_grounding",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Complete\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(920,275,970,348)<|box_end|> {\"point\": [312, 945], \"target\": \"Complete\", \"role\": \"button\", \"container\": \"Application Review Summary Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_base_task1_step_id",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_14_application_documents\",\n  \"step_title\": \"Business Name Registration - Step 6: Application Documents (BN-2 Form Sign & Upload)\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"file_upload\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_contrast_task2_next_action",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS Dashboard - Start Application. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Make Application\",\n  \"container\": \"My Applications Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Make Application' in 'My Applications Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_bright_task1_step_id",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_10_applicant_details\",\n  \"step_title\": \"Business Name Registration - Step 2: Applicant Details\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_base_task1_step_id",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_17_payment_checkpoint\",\n  \"step_title\": \"Business Name Registration - Step 9: Statutory Fee Payment & Session Handoff\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"payment\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_base_task4_safety",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"file_upload\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Please sign and upload the statutory BN-2 form. Autopilot will automatically resume once the document is attached.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_bright_task3_grounding",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Preview\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(595,340,645,405)<|box_end|> {\"point\": [372, 620], \"target\": \"Preview\", \"role\": \"button\", \"container\": \"Declaration Confirmation Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_bright_task3_grounding",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Apply Now \u00bb\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(620,590,675,715)<|box_end|> {\"point\": [652, 648], \"target\": \"Apply Now \\u00bb\", \"role\": \"button\", \"container\": \"Modal Notice: BRS V2\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_bright_task4_safety",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_base_task3_grounding",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Sign In Form\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(420,360,580,640)<|box_end|> {\"point\": [500, 500], \"target\": \"Sign In Form\", \"role\": \"form\", \"container\": \"One Log In Card\", \"action\": \"wait\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_contrast_task3_grounding",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Apply\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(365,490,415,555)<|box_end|> {\"point\": [522, 390], \"target\": \"Apply\", \"role\": \"button\", \"container\": \"Registration Of A Business Name\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_contrast_task4_safety",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_bright_task1_step_id",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_17_payment_checkpoint\",\n  \"step_title\": \"Business Name Registration - Step 9: Statutory Fee Payment & Session Handoff\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"payment\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_base_task4_safety",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"login\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Enter eCitizen email or ID and password to sign in.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_base_task4_safety",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_base_task2_next_action",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 1: Proposed Names. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Proposed Names Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Proposed Names Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_contrast_task1_step_id",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_03_confirm_modal\",\n  \"step_title\": \"BRS V2 Notice Modal Confirmation\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_bright_task3_grounding",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Complete\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(920,275,970,348)<|box_end|> {\"point\": [312, 945], \"target\": \"Complete\", \"role\": \"button\", \"container\": \"Application Review Summary Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_bright_task3_grounding",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Ownership Information Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_base_task4_safety",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_bright_task1_step_id",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_05_account_switcher\",\n  \"step_title\": \"eCitizen Accounts Switcher\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_contrast_task4_safety",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_base_task3_grounding",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Nature Of Business Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_base_task4_safety",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_contrast_task3_grounding",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Applicant Details Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_contrast_task3_grounding",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Sign In Form\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(420,360,580,640)<|box_end|> {\"point\": [500, 500], \"target\": \"Sign In Form\", \"role\": \"form\", \"container\": \"One Log In Card\", \"action\": \"wait\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_base_task3_grounding",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Dully signed BN - 2 Form Upload\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(470,275,540,620)<|box_end|> {\"point\": [448, 505], \"target\": \"Dully signed BN - 2 Form Upload\", \"role\": \"file_upload\", \"container\": \"Application Documents Step Form\", \"action\": \"wait\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_contrast_task2_next_action",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen Central Authentication Checkpoint. Navigating forward toward business name registration.\",\n  \"action\": \"wait\",\n  \"target\": \"Sign In Form\",\n  \"container\": \"One Log In Card\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute wait on 'Sign In Form' in 'One Log In Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_base_task1_step_id",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_01_dashboard\",\n  \"step_title\": \"BRS Dashboard - Start Application\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_base_task3_grounding",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Apply Now \u00bb\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(620,590,675,715)<|box_end|> {\"point\": [652, 648], \"target\": \"Apply Now \\u00bb\", \"role\": \"button\", \"container\": \"Modal Notice: BRS V2\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_bright_task3_grounding",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Nature Of Business Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_contrast_task1_step_id",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_11_nature_of_business\",\n  \"step_title\": \"Business Name Registration - Step 3: Nature Of Business\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_base_task2_next_action",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS V2 Registry Selection - Companies Registry Services. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Proceed\",\n  \"container\": \"Companies Registry Services Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Proceed' in 'Companies Registry Services Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_bright_task2_next_action",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 1: Proposed Names. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Proposed Names Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Proposed Names Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_contrast_task1_step_id",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_14_application_documents\",\n  \"step_title\": \"Business Name Registration - Step 6: Application Documents (BN-2 Form Sign & Upload)\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"file_upload\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_bright_task2_next_action",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen OAuth Consent Authorization. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Proceed\",\n  \"container\": \"Authorization Consent Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Proceed' in 'Authorization Consent Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_base_task4_safety",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"payment\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Statutory invoice KES 925.00 generated on Pesaflow. Choose payment mode (Mpesa/Card) to authorize.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_bright_task3_grounding",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Proceed\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(660,440,715,580)<|box_end|> {\"point\": [510, 688], \"target\": \"Proceed\", \"role\": \"button\", \"container\": \"Authorization Consent Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_base_task3_grounding",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Apply\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(365,490,415,555)<|box_end|> {\"point\": [522, 390], \"target\": \"Apply\", \"role\": \"button\", \"container\": \"Registration Of A Business Name\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_bright_task1_step_id",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_01_dashboard\",\n  \"step_title\": \"BRS Dashboard - Start Application\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_base_task1_step_id",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_05_account_switcher\",\n  \"step_title\": \"eCitizen Accounts Switcher\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_base_task3_grounding",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Complete\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(920,275,970,348)<|box_end|> {\"point\": [312, 945], \"target\": \"Complete\", \"role\": \"button\", \"container\": \"Application Review Summary Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_contrast_task3_grounding",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Nature Of Business Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_base_task2_next_action",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen Accounts Switcher. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Personal Account\",\n  \"container\": \"Select Account Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Personal Account' in 'Select Account Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_base_task1_step_id",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_00_login_checkpoint\",\n  \"step_title\": \"eCitizen Central Authentication Checkpoint\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"login\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_bright_task2_next_action",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 7: Statutory Declaration. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Preview\",\n  \"container\": \"Declaration Confirmation Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Preview' in 'Declaration Confirmation Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_base_task4_safety",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_base_task2_next_action",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 9: Statutory Fee Payment & Session Handoff. Navigating forward toward business name registration.\",\n  \"action\": \"wait\",\n  \"target\": \"Pesaflow Payment Options\",\n  \"container\": \"Pesaflow Checkout Portal\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute wait on 'Pesaflow Payment Options' in 'Pesaflow Checkout Portal'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_base_task2_next_action",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS V2 Notice Modal Confirmation. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply Now \\u00bb\",\n  \"container\": \"Modal Notice: BRS V2\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply Now \\u00bb' in 'Modal Notice: BRS V2'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_bright_task2_next_action",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Companies Registry - Apply for Registration Of A Business Name. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply\",\n  \"container\": \"Registration Of A Business Name\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply' in 'Registration Of A Business Name'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_base_task4_safety",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_base_task1_step_id",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_10_applicant_details\",\n  \"step_title\": \"Business Name Registration - Step 2: Applicant Details\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_bright_task1_step_id",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_08_apply_business_name\",\n  \"step_title\": \"Companies Registry - Apply for Registration Of A Business Name\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_bright_task1_step_id",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_14_application_documents\",\n  \"step_title\": \"Business Name Registration - Step 6: Application Documents (BN-2 Form Sign & Upload)\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"file_upload\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_base_task1_step_id",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_15_declaration\",\n  \"step_title\": \"Business Name Registration - Step 7: Statutory Declaration\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_bright_task4_safety",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"payment\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Statutory invoice KES 925.00 generated on Pesaflow. Choose payment mode (Mpesa/Card) to authorize.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_contrast_task1_step_id",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_02_select_brs_v2\",\n  \"step_title\": \"Select Brs V2 Service\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_contrast_task1_step_id",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_13_ownership_information\",\n  \"step_title\": \"Business Name Registration - Step 5: Ownership Information\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_contrast_task2_next_action",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 5: Ownership Information. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Ownership Information Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Ownership Information Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_contrast_task2_next_action",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen OAuth Consent Authorization. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Proceed\",\n  \"container\": \"Authorization Consent Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Proceed' in 'Authorization Consent Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_04_brsv2_sso_login_base_task1_step_id",
+    "step_id": "step_04_brsv2_sso_login",
+    "image": "ai-service/dataset/images/step_04_brsv2_sso_login_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_04_brsv2_sso_login\",\n  \"step_title\": \"BRS V2 Single Sign-On (SSO) Gateway\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_contrast_task2_next_action",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 4: Registered Office Address. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Registered Office Address Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Registered Office Address Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_contrast_task4_safety",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_bright_task1_step_id",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_06_oauth_consent\",\n  \"step_title\": \"eCitizen OAuth Consent Authorization\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_base_task4_safety",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_bright_task1_step_id",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_12_registered_office_address\",\n  \"step_title\": \"Business Name Registration - Step 4: Registered Office Address\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_contrast_task1_step_id",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_06_oauth_consent\",\n  \"step_title\": \"eCitizen OAuth Consent Authorization\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_bright_task4_safety",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_bright_task4_safety",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_base_task1_step_id",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_16_application_review_complete\",\n  \"step_title\": \"Business Name Registration - Step 8: Application Review & Complete Checkpoint\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"approval\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_contrast_task2_next_action",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 8: Application Review & Complete Checkpoint. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Complete\",\n  \"container\": \"Application Review Summary Form\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute click on 'Complete' in 'Application Review Summary Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_base_task3_grounding",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(820,840,880,930)<|box_end|> {\"point\": [885, 850], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Proposed Names Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_bright_task2_next_action",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen Accounts Switcher. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Personal Account\",\n  \"container\": \"Select Account Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Personal Account' in 'Select Account Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_contrast_task1_step_id",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_08_apply_business_name\",\n  \"step_title\": \"Companies Registry - Apply for Registration Of A Business Name\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_contrast_task3_grounding",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Pesaflow Payment Options\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(540,290,880,710)<|box_end|> {\"point\": [500, 710], \"target\": \"Pesaflow Payment Options\", \"role\": \"payment_gateway\", \"container\": \"Pesaflow Checkout Portal\", \"action\": \"wait\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_contrast_task3_grounding",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Apply Now \u00bb\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(620,590,675,715)<|box_end|> {\"point\": [652, 648], \"target\": \"Apply Now \\u00bb\", \"role\": \"button\", \"container\": \"Modal Notice: BRS V2\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_base_task2_next_action",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 2: Applicant Details. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Applicant Details Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Applicant Details Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_contrast_task4_safety",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_04_brsv2_sso_login_bright_task3_grounding",
+    "step_id": "step_04_brsv2_sso_login",
+    "image": "ai-service/dataset/images/step_04_brsv2_sso_login_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Login with eCitizen\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(510,410,570,610)<|box_end|> {\"point\": [510, 540], \"target\": \"Login with eCitizen\", \"role\": \"button\", \"container\": \"BRS V2 Login Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_bright_task2_next_action",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 4: Registered Office Address. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Registered Office Address Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Registered Office Address Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_bright_task3_grounding",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Apply\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(365,490,415,555)<|box_end|> {\"point\": [522, 390], \"target\": \"Apply\", \"role\": \"button\", \"container\": \"Registration Of A Business Name\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_bright_task2_next_action",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 2: Applicant Details. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Applicant Details Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Applicant Details Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_bright_task2_next_action",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 5: Ownership Information. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Ownership Information Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Ownership Information Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_base_task1_step_id",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_12_registered_office_address\",\n  \"step_title\": \"Business Name Registration - Step 4: Registered Office Address\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_contrast_task4_safety",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_bright_task1_step_id",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_13_ownership_information\",\n  \"step_title\": \"Business Name Registration - Step 5: Ownership Information\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_contrast_task1_step_id",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_12_registered_office_address\",\n  \"step_title\": \"Business Name Registration - Step 4: Registered Office Address\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_contrast_task2_next_action",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Select Brs V2 Service. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply now\",\n  \"container\": \"Brs V2 Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply now' in 'Brs V2 Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_bright_task1_step_id",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_11_nature_of_business\",\n  \"step_title\": \"Business Name Registration - Step 3: Nature Of Business\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_base_task3_grounding",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Preview\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(595,340,645,405)<|box_end|> {\"point\": [372, 620], \"target\": \"Preview\", \"role\": \"button\", \"container\": \"Declaration Confirmation Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_contrast_task3_grounding",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Proceed\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(660,440,715,580)<|box_end|> {\"point\": [510, 688], \"target\": \"Proceed\", \"role\": \"button\", \"container\": \"Authorization Consent Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_contrast_task3_grounding",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Preview\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(595,340,645,405)<|box_end|> {\"point\": [372, 620], \"target\": \"Preview\", \"role\": \"button\", \"container\": \"Declaration Confirmation Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_base_task4_safety",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_contrast_task1_step_id",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_10_applicant_details\",\n  \"step_title\": \"Business Name Registration - Step 2: Applicant Details\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_base_task1_step_id",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_11_nature_of_business\",\n  \"step_title\": \"Business Name Registration - Step 3: Nature Of Business\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_10_applicant_details_base_task3_grounding",
+    "step_id": "step_10_applicant_details",
+    "image": "ai-service/dataset/images/step_10_applicant_details_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Applicant Details Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_contrast_task4_safety",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_bright_task1_step_id",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_09_proposed_names\",\n  \"step_title\": \"Business Name Registration - Step 1: Proposed Names\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_base_task1_step_id",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_06_oauth_consent\",\n  \"step_title\": \"eCitizen OAuth Consent Authorization\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_contrast_task4_safety",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_base_task4_safety",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_bright_task4_safety",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"approval\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Review application details. Click 'Complete' to file application with Registrar.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_contrast_task3_grounding",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Apply now\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(480,580,530,680)<|box_end|> {\"point\": [630, 505], \"target\": \"Apply now\", \"role\": \"button\", \"container\": \"Brs V2 Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_04_brsv2_sso_login_base_task4_safety",
+    "step_id": "step_04_brsv2_sso_login",
+    "image": "ai-service/dataset/images/step_04_brsv2_sso_login_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_bright_task4_safety",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_bright_task4_safety",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_bright_task1_step_id",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_00_login_checkpoint\",\n  \"step_title\": \"eCitizen Central Authentication Checkpoint\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"login\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_contrast_task2_next_action",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Companies Registry - Apply for Registration Of A Business Name. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply\",\n  \"container\": \"Registration Of A Business Name\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply' in 'Registration Of A Business Name'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_bright_task2_next_action",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Select Brs V2 Service. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply now\",\n  \"container\": \"Brs V2 Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply now' in 'Brs V2 Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_base_task3_grounding",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Make Application\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(220,690,270,830)<|box_end|> {\"point\": [760, 245], \"target\": \"Make Application\", \"role\": \"button\", \"container\": \"My Applications Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_contrast_task4_safety",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_bright_task1_step_id",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_15_declaration\",\n  \"step_title\": \"Business Name Registration - Step 7: Statutory Declaration\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_contrast_task2_next_action",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen Accounts Switcher. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Personal Account\",\n  \"container\": \"Select Account Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Personal Account' in 'Select Account Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_base_task2_next_action",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 4: Registered Office Address. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Registered Office Address Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Registered Office Address Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_contrast_task3_grounding",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(820,840,880,930)<|box_end|> {\"point\": [885, 850], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Proposed Names Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_base_task2_next_action",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 5: Ownership Information. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Ownership Information Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Ownership Information Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_bright_task3_grounding",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Pesaflow Payment Options\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(540,290,880,710)<|box_end|> {\"point\": [500, 710], \"target\": \"Pesaflow Payment Options\", \"role\": \"payment_gateway\", \"container\": \"Pesaflow Checkout Portal\", \"action\": \"wait\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_bright_task4_safety",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_bright_task3_grounding",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Make Application\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(220,690,270,830)<|box_end|> {\"point\": [760, 245], \"target\": \"Make Application\", \"role\": \"button\", \"container\": \"My Applications Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_contrast_task1_step_id",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_05_account_switcher\",\n  \"step_title\": \"eCitizen Accounts Switcher\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_04_brsv2_sso_login_bright_task2_next_action",
+    "step_id": "step_04_brsv2_sso_login",
+    "image": "ai-service/dataset/images/step_04_brsv2_sso_login_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS V2 Single Sign-On (SSO) Gateway. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Login with eCitizen\",\n  \"container\": \"BRS V2 Login Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Login with eCitizen' in 'BRS V2 Login Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_bright_task3_grounding",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Proceed\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(560,460,615,555)<|box_end|> {\"point\": [508, 588], \"target\": \"Proceed\", \"role\": \"button\", \"container\": \"Companies Registry Services Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_contrast_task3_grounding",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Proceed\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(560,460,615,555)<|box_end|> {\"point\": [508, 588], \"target\": \"Proceed\", \"role\": \"button\", \"container\": \"Companies Registry Services Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_bright_task2_next_action",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS V2 Notice Modal Confirmation. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply Now \\u00bb\",\n  \"container\": \"Modal Notice: BRS V2\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply Now \\u00bb' in 'Modal Notice: BRS V2'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_contrast_task2_next_action",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS V2 Registry Selection - Companies Registry Services. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Proceed\",\n  \"container\": \"Companies Registry Services Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Proceed' in 'Companies Registry Services Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_contrast_task1_step_id",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_09_proposed_names\",\n  \"step_title\": \"Business Name Registration - Step 1: Proposed Names\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_bright_task4_safety",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"file_upload\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Please sign and upload the statutory BN-2 form. Autopilot will automatically resume once the document is attached.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_base_task2_next_action",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 6: Application Documents (BN-2 Form Sign & Upload). Navigating forward toward business name registration.\",\n  \"action\": \"wait\",\n  \"target\": \"Dully signed BN - 2 Form Upload\",\n  \"container\": \"Application Documents Step Form\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute wait on 'Dully signed BN - 2 Form Upload' in 'Application Documents Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_base_task2_next_action",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Select Brs V2 Service. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply now\",\n  \"container\": \"Brs V2 Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply now' in 'Brs V2 Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_base_task4_safety",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"approval\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Review application details. Click 'Complete' to file application with Registrar.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_13_ownership_information_base_task3_grounding",
+    "step_id": "step_13_ownership_information",
+    "image": "ai-service/dataset/images/step_13_ownership_information_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Ownership Information Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_base_task3_grounding",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Proceed\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(660,440,715,580)<|box_end|> {\"point\": [510, 688], \"target\": \"Proceed\", \"role\": \"button\", \"container\": \"Authorization Consent Form\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_04_brsv2_sso_login_contrast_task3_grounding",
+    "step_id": "step_04_brsv2_sso_login",
+    "image": "ai-service/dataset/images/step_04_brsv2_sso_login_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Login with eCitizen\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(510,410,570,610)<|box_end|> {\"point\": [510, 540], \"target\": \"Login with eCitizen\", \"role\": \"button\", \"container\": \"BRS V2 Login Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_contrast_task4_safety",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"payment\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Statutory invoice KES 925.00 generated on Pesaflow. Choose payment mode (Mpesa/Card) to authorize.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_bright_task2_next_action",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS Dashboard - Start Application. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Make Application\",\n  \"container\": \"My Applications Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Make Application' in 'My Applications Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_04_brsv2_sso_login_base_task2_next_action",
+    "step_id": "step_04_brsv2_sso_login",
+    "image": "ai-service/dataset/images/step_04_brsv2_sso_login_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized BRS V2 Single Sign-On (SSO) Gateway. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Login with eCitizen\",\n  \"container\": \"BRS V2 Login Card\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Login with eCitizen' in 'BRS V2 Login Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_base_task4_safety",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_contrast_task1_step_id",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_07_select_companies_registry\",\n  \"step_title\": \"BRS V2 Registry Selection - Companies Registry Services\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_06_oauth_consent_base_task4_safety",
+    "step_id": "step_06_oauth_consent",
+    "image": "ai-service/dataset/images/step_06_oauth_consent_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_contrast_task2_next_action",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 3: Nature Of Business. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Nature Of Business Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Nature Of Business Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_01_dashboard_contrast_task1_step_id",
+    "step_id": "step_01_dashboard",
+    "image": "ai-service/dataset/images/step_01_dashboard_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_01_dashboard\",\n  \"step_title\": \"BRS Dashboard - Start Application\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_base_task1_step_id",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_08_apply_business_name\",\n  \"step_title\": \"Companies Registry - Apply for Registration Of A Business Name\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_bright_task4_safety",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_11_nature_of_business_bright_task2_next_action",
+    "step_id": "step_11_nature_of_business",
+    "image": "ai-service/dataset/images/step_11_nature_of_business_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 3: Nature Of Business. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Nature Of Business Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Nature Of Business Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_09_proposed_names_contrast_task2_next_action",
+    "step_id": "step_09_proposed_names",
+    "image": "ai-service/dataset/images/step_09_proposed_names_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 1: Proposed Names. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Next\",\n  \"container\": \"Proposed Names Step Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Next' in 'Proposed Names Step Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_contrast_task4_safety",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"login\",\n  \"action\": \"wait\",\n  \"user_action_required\": \"Enter eCitizen email or ID and password to sign in.\",\n  \"policy\": \"Statutory human interaction mandated.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_bright_task4_safety",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_base_task2_next_action",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 8: Application Review & Complete Checkpoint. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Complete\",\n  \"container\": \"Application Review Summary Form\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute click on 'Complete' in 'Application Review Summary Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_bright_task1_step_id",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_07_select_companies_registry\",\n  \"step_title\": \"BRS V2 Registry Selection - Companies Registry Services\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_bright_task4_safety",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_02_select_brs_v2_base_task1_step_id",
+    "step_id": "step_02_select_brs_v2",
+    "image": "ai-service/dataset/images/step_02_select_brs_v2_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_02_select_brs_v2\",\n  \"step_title\": \"Select Brs V2 Service\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_08_apply_business_name_base_task2_next_action",
+    "step_id": "step_08_apply_business_name",
+    "image": "ai-service/dataset/images/step_08_apply_business_name_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Companies Registry - Apply for Registration Of A Business Name. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Apply\",\n  \"container\": \"Registration Of A Business Name\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Apply' in 'Registration Of A Business Name'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_bright_task2_next_action",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 8: Application Review & Complete Checkpoint. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Complete\",\n  \"container\": \"Application Review Summary Form\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute click on 'Complete' in 'Application Review Summary Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_17_payment_checkpoint_base_task3_grounding",
+    "step_id": "step_17_payment_checkpoint",
+    "image": "ai-service/dataset/images/step_17_payment_checkpoint_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Pesaflow Payment Options\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(540,290,880,710)<|box_end|> {\"point\": [500, 710], \"target\": \"Pesaflow Payment Options\", \"role\": \"payment_gateway\", \"container\": \"Pesaflow Checkout Portal\", \"action\": \"wait\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_base_task3_grounding",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Proceed\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(560,460,615,555)<|box_end|> {\"point\": [508, 588], \"target\": \"Proceed\", \"role\": \"button\", \"container\": \"Companies Registry Services Card\", \"action\": \"click\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_bright_task1_step_id",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_16_application_review_complete\",\n  \"step_title\": \"Business Name Registration - Step 8: Application Review & Complete Checkpoint\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"approval\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_base_task4_safety",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_15_declaration_base_task2_next_action",
+    "step_id": "step_15_declaration",
+    "image": "ai-service/dataset/images/step_15_declaration_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized Business Name Registration - Step 7: Statutory Declaration. Navigating forward toward business name registration.\",\n  \"action\": \"click\",\n  \"target\": \"Preview\",\n  \"container\": \"Declaration Confirmation Form\",\n  \"requires_user_approval\": false,\n  \"reason\": \"Execute click on 'Preview' in 'Declaration Confirmation Form'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_07_select_companies_registry_base_task4_safety",
+    "step_id": "step_07_select_companies_registry",
+    "image": "ai-service/dataset/images/step_07_select_companies_registry_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_16_application_review_complete_contrast_task1_step_id",
+    "step_id": "step_16_application_review_complete",
+    "image": "ai-service/dataset/images/step_16_application_review_complete_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_16_application_review_complete\",\n  \"step_title\": \"Business Name Registration - Step 8: Application Review & Complete Checkpoint\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": true,\n  \"handoff_trigger\": \"approval\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_14_application_documents_contrast_task3_grounding",
+    "step_id": "step_14_application_documents",
+    "image": "ai-service/dataset/images/step_14_application_documents_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Dully signed BN - 2 Form Upload\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(470,275,540,620)<|box_end|> {\"point\": [448, 505], \"target\": \"Dully signed BN - 2 Form Upload\", \"role\": \"file_upload\", \"container\": \"Application Documents Step Form\", \"action\": \"wait\"}"
+      }
+    ]
+  },
+  {
+    "id": "step_03_confirm_modal_bright_task1_step_id",
+    "step_id": "step_03_confirm_modal",
+    "image": "ai-service/dataset/images/step_03_confirm_modal_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nWhat eCitizen portal screen, step, and state is displayed in this image?"
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"step_id\": \"step_03_confirm_modal\",\n  \"step_title\": \"BRS V2 Notice Modal Confirmation\",\n  \"service\": \"Business Registration Service (BRS)\",\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_00_login_checkpoint_base_task2_next_action",
+    "step_id": "step_00_login_checkpoint",
+    "image": "ai-service/dataset/images/step_00_login_checkpoint_base.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nTask Goal: Register a business name on eCitizen Kenya. Analyze this screen and determine the next action."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"thought\": \"Recognized eCitizen Central Authentication Checkpoint. Navigating forward toward business name registration.\",\n  \"action\": \"wait\",\n  \"target\": \"Sign In Form\",\n  \"container\": \"One Log In Card\",\n  \"requires_user_approval\": true,\n  \"reason\": \"Execute wait on 'Sign In Form' in 'One Log In Card'.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_05_account_switcher_contrast_task4_safety",
+    "step_id": "step_05_account_switcher",
+    "image": "ai-service/dataset/images/step_05_account_switcher_contrast.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nExamine this screen for human-in-the-loop checkpoints, statutory signatures, or payment gates."
+      },
+      {
+        "from": "gpt",
+        "value": "{\n  \"is_checkpoint\": false,\n  \"handoff_trigger\": null,\n  \"action\": \"proceed\",\n  \"user_action_required\": null,\n  \"policy\": \"Autopilot may proceed automatically.\"\n}"
+      }
+    ]
+  },
+  {
+    "id": "step_12_registered_office_address_bright_task3_grounding",
+    "step_id": "step_12_registered_office_address",
+    "image": "ai-service/dataset/images/step_12_registered_office_address_bright.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\nDetect and ground the target UI control for this step: \"Next\". Provide normalized bounding box coordinates [ymin, xmin, ymax, xmax] (0-1000) and click point [x, y]."
+      },
+      {
+        "from": "gpt",
+        "value": "<|box_start|>(830,840,890,930)<|box_end|> {\"point\": [885, 860], \"target\": \"Next\", \"role\": \"button\", \"container\": \"Registered Office Address Step Form\", \"action\": \"click\"}"
+      }
+    ]
+  }
+]
