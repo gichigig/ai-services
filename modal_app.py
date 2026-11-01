@@ -1232,8 +1232,74 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         print(f"GPT OSS 120B fallback note: {gpt_err}")
 
     # Heuristic fallback if LLM container is spinning up
-    # Step 01: BRS Dashboard (brs.ecitizen.go.ke/ or eBusiness home)
-    if ("brs.ecitizen.go.ke" in req.url and "brsv2" not in req.url) and (req.url.rstrip("/").endswith("brs.ecitizen.go.ke") or "/dashboard" in req.url or "ebusiness" in (req.page_title or "").lower()):
+    # Step 02 & Step 03: BRS Service Selection & Migration Modal (brs.ecitizen.go.ke/services or /accounts/.../services)
+    if "brs.ecitizen.go.ke" in req.url and "brsv2" not in req.url and "/services" in req.url:
+        # Step 03: Check if BRS V2 Notice Modal is open
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("modal" in container or "dialog" in container or "modal" in el.tag or "announcement" in container) and ("apply now" in combined or "apply" in combined or "proceed" in combined or "click here" in combined):
+                print(f"[DecideAction HEURISTIC] Step 03: Confirm BRS V2 modal on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_brs_confirm_modal",
+                    "decision": {
+                        "thought": "Detected BRS V2 public announcement modal. Clicking 'Apply Now »' to confirm and redirect to BRS V2.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Confirm BRS V2 Modal",
+                        "reason": "Confirming BRS V2 migration modal to proceed to registration portal"
+                    }
+                }
+
+        # Step 02: Locate "Apply now" under "Brs V2" (strictly EXCLUDING "Manual Services")
+        apply_elements = []
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "apply" in combined:
+                is_manual = "manual" in container or "manual" in combined
+                apply_elements.append((el, is_manual, container))
+
+        # 1. Prefer element specifically associated with 'brs v2' or 'v2'
+        for el, is_man, cont in apply_elements:
+            if not is_man and ("v2" in cont or "brs" in cont or "companies" in cont or "2" in cont):
+                print(f"[DecideAction HEURISTIC] Step 02: Found Brs V2 Apply button {el.id} (container: {cont})")
+                return {
+                    "status": "success",
+                    "source": "heuristic_brs_select_v2_service",
+                    "decision": {
+                        "thought": "Detected BRS service listing. Clicking 'Apply now' under Brs V2 card to begin automated registration.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Select BRS V2",
+                        "reason": "Selecting automated Brs V2 service"
+                    }
+                }
+
+        # 2. If container doesn't specify 'v2', pick the first apply button that is NOT manual
+        non_manual_applies = [el for el, is_man, _ in apply_elements if not is_man]
+        if non_manual_applies:
+            v2_el = non_manual_applies[-1]
+            print(f"[DecideAction HEURISTIC] Step 02: Selected non-manual Apply button {v2_el.id}")
+            return {
+                "status": "success",
+                "source": "heuristic_brs_select_v2_fallback",
+                "decision": {
+                    "thought": "Clicking 'Apply now' for Brs V2 (skipping Manual Services).",
+                    "action": "click",
+                    "element_id": v2_el.id,
+                    "confidence": 0.99,
+                    "milestone": "Select BRS V2",
+                    "reason": "Clicking 'Apply now' under Brs V2"
+                }
+            }
+
+    # Step 01: BRS Dashboard (brs.ecitizen.go.ke/ or /dashboard, strictly NOT /services)
+    is_brs_v1 = "brs.ecitizen.go.ke" in req.url and "brsv2" not in req.url
+    if is_brs_v1 and "/services" not in req.url:
         # First priority: Click "+ Make Application" button in "My Applications" container
         for el in req.elements:
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
@@ -1270,47 +1336,6 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                         "reason": "Clicking 'Make Application' link to navigate to BRS services"
                     }
                 }
-
-    # Step 02 & Step 03: BRS Service Selection & Migration Modal (brs.ecitizen.go.ke/services)
-    if "brs.ecitizen.go.ke" in req.url and "brsv2" not in req.url and "/services" in req.url:
-        # Step 03: Check if BRS V2 Notice Modal is open
-        for el in req.elements:
-            combined = f"{(el.text or '')} {(el.name or '')}".lower()
-            container = (el.container or "").lower()
-            if ("modal" in container or "dialog" in container) and ("apply now" in combined or "apply" in combined or "proceed" in combined):
-                print(f"[DecideAction HEURISTIC] Step 03: Confirm BRS V2 modal on element {el.id}")
-                return {
-                    "status": "success",
-                    "source": "heuristic_brs_confirm_modal",
-                    "decision": {
-                        "thought": "Detected BRS V2 public announcement modal. Clicking 'Apply Now »' to confirm and redirect to BRS V2.",
-                        "action": "click",
-                        "element_id": el.id,
-                        "confidence": 0.99,
-                        "milestone": "Confirm BRS V2 Modal",
-                        "reason": "Confirming BRS V2 migration modal to proceed to registration portal"
-                    }
-                }
-
-        # Step 02: Click "Apply now" under "BRS V2" (exclude Manual Services)
-        for el in req.elements:
-            combined = f"{(el.text or '')} {(el.name or '')}".lower()
-            container = (el.container or "").lower()
-            if "apply" in combined and "manual" not in container:
-                if "v2" in container or "brs" in container or "companies" in container or "business" in container or "v2" in combined:
-                    print(f"[DecideAction HEURISTIC] Step 02: Select BRS V2 Service on element {el.id}")
-                    return {
-                        "status": "success",
-                        "source": "heuristic_brs_select_v2_service",
-                        "decision": {
-                            "thought": "Detected BRS service listing. Clicking 'Apply now' under BRS V2 to begin automated registration.",
-                            "action": "click",
-                            "element_id": el.id,
-                            "confidence": 0.99,
-                            "milestone": "Select BRS V2",
-                            "reason": "Selecting automated BRS V2 service"
-                        }
-                    }
 
     if "serviceportal.ntsa" in req.url or "ntsa.go.ke" in req.url:
         for el in req.elements:
