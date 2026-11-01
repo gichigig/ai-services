@@ -901,6 +901,7 @@ class EcitizenElement(BaseModel):
     role: Optional[str] = ""
     href: Optional[str] = ""
     container: Optional[str] = ""
+    value: Optional[str] = ""
 
 class EcitizenActionRequest(BaseModel):
     url: str
@@ -1465,6 +1466,940 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                         "reason": "Clicking 'Apply' to initiate Registration of a Business Name"
                     }
                 }
+
+    # Step 09: Proposed Names (/apply/19)
+    if "brsv2.ecitizen.go.ke" in req.url and ("/apply/19" in req.url or "proposed names" in (req.page_title or "").lower()):
+        # Check for unfilled Proposed Names input
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            if el.tag == "input" and ("preferred name" in combined or "proposed name" in combined or "business name" in combined):
+                val = (req.form_values or {}).get("proposedName1") or (req.form_values or {}).get("proposed_name") or (req.form_values or {}).get("businessName") or (req.form_values or {}).get("proposedName") or "Nairobi Cloud Labs"
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() != val.lower():
+                    print(f"[DecideAction PLAYBOOK] Step 09: Fill proposed business name on element {el.id}: {val}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_fill_proposed_name",
+                        "decision": {
+                            "thought": f"Filling proposed business name '{val}' in priority order.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": val,
+                            "confidence": 0.99,
+                            "milestone": "Proposed Business Name",
+                            "reason": f"Entering primary proposed business name: {val}"
+                        }
+                    }
+
+        # Check for Affiliated to an Existing Entity dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("affiliated" in combined or "affiliated" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                affil_val = (req.form_values or {}).get("isAffiliated", "No")
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() == "choose":
+                    print(f"[DecideAction PLAYBOOK] Step 09: Select affiliation '{affil_val}' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_select_affiliation",
+                        "decision": {
+                            "thought": f"Selecting '{affil_val}' for Affiliated to an Existing Entity.",
+                            "action": "select",
+                            "element_id": el.id,
+                            "fill_value": affil_val,
+                            "confidence": 0.99,
+                            "milestone": "Affiliation Dropdown",
+                            "reason": f"Setting entity affiliation to '{affil_val}'"
+                        }
+                    }
+
+        # Once filled, click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction PLAYBOOK] Step 09: Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_proposed_names_next",
+                    "decision": {
+                        "thought": "All proposed name details are complete. Clicking 'Next' to proceed to Applicant Details.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Applicant Details",
+                        "reason": "Clicking 'Next' to advance to Applicant Details step"
+                    }
+                }
+
+    # Step 10: Applicant Details (step=1)
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=1" in req.url or "applicant details" in (req.page_title or "").lower()):
+        # Check for Capacity dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("capacity" in combined or "capacity" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                raw_cap = (req.form_values or {}).get("capacity", "Proprietor")
+                cap_val = "Proprietor" if str(raw_cap).lower() in ("owner", "self", "proprietor", "") else str(raw_cap)
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() == "choose":
+                    print(f"[DecideAction PLAYBOOK] Step 10: Select capacity '{cap_val}' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_applicant_capacity",
+                        "decision": {
+                            "thought": f"Selecting '{cap_val}' for Applicant Capacity.",
+                            "action": "select",
+                            "element_id": el.id,
+                            "fill_value": cap_val,
+                            "confidence": 0.99,
+                            "milestone": "Applicant Capacity",
+                            "reason": f"Setting capacity to '{cap_val}'"
+                        }
+                    }
+
+        # Check for Address textbox
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("address" in combined or "address" in container):
+                addr_val = (req.form_values or {}).get("postalAddress") or (req.form_values or {}).get("address") or "P.O. Box 100-00100 Nairobi"
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val:
+                    print(f"[DecideAction PLAYBOOK] Step 10: Fill address on element {el.id}: {addr_val}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_applicant_address",
+                        "decision": {
+                            "thought": f"Filling postal address '{addr_val}'.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": addr_val,
+                            "confidence": 0.99,
+                            "milestone": "Applicant Address",
+                            "reason": f"Entering applicant postal address: {addr_val}"
+                        }
+                    }
+
+        # Check for Postal Code
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input") or el.role == "combobox"):
+                raw_pc = (req.form_values or {}).get("postalCode", "00100 - G.P.O NAIROBI")
+                pc_val = "00100 - G.P.O NAIROBI" if "00100" in str(raw_pc) else str(raw_pc)
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() == "choose":
+                    print(f"[DecideAction PLAYBOOK] Step 10: Select postal code '{pc_val}' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_applicant_postal_code",
+                        "decision": {
+                            "thought": f"Setting postal code '{pc_val}'.",
+                            "action": "select",
+                            "element_id": el.id,
+                            "fill_value": pc_val,
+                            "confidence": 0.99,
+                            "milestone": "Applicant Postal Code",
+                            "reason": f"Setting postal code to '{pc_val}'"
+                        }
+                    }
+
+        # Click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction PLAYBOOK] Step 10: Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_applicant_details_next",
+                    "decision": {
+                        "thought": "Applicant details are complete. Clicking 'Next' to advance to Nature Of Business.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Nature of Business",
+                        "reason": "Clicking 'Next' to proceed to Nature of Business step"
+                    }
+                }
+
+    # Step 11: Nature of Business (step=2)
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=2" in req.url or "nature of business" in (req.page_title or "").lower()):
+        # Check for Nature of Business dropdown
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("nature of business" in combined or "nature of business" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                nature_val = (req.form_values or {}).get("natureOfBusiness", "OTHER")
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() == "choose":
+                    print(f"[DecideAction PLAYBOOK] Step 11: Select Nature of Business '{nature_val}' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_nature_of_business_select",
+                        "decision": {
+                            "thought": f"Selecting '{nature_val}' for Nature of Business.",
+                            "action": "select",
+                            "element_id": el.id,
+                            "fill_value": nature_val,
+                            "confidence": 0.99,
+                            "milestone": "Nature of Business Selection",
+                            "reason": f"Setting nature of business to '{nature_val}'"
+                        }
+                    }
+
+        # Check for Describe Nature of Business textarea
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("textarea", "input") and ("describe" in combined or "describe" in container or "nature" in combined):
+                desc_val = (req.form_values or {}).get("businessDescription") or (req.form_values or {}).get("natureDescription") or "General supplies, retail trading, and related commercial services."
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val:
+                    print(f"[DecideAction PLAYBOOK] Step 11: Fill business description on element {el.id}: {desc_val}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_nature_of_business_desc",
+                        "decision": {
+                            "thought": f"Describing nature of business: '{desc_val}'.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": desc_val,
+                            "confidence": 0.99,
+                            "milestone": "Nature of Business Description",
+                            "reason": f"Entering nature of business description: {desc_val}"
+                        }
+                    }
+
+        # Click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction PLAYBOOK] Step 11: Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_nature_of_business_next",
+                    "decision": {
+                        "thought": "Nature of business is complete. Clicking 'Next' to proceed to Registered Office Address.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Registered Office Address",
+                        "reason": "Clicking 'Next' to advance to Registered Office Address step"
+                    }
+                }
+
+    # Step 12: Registered Office Address (step=3)
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=3" in req.url or "primary address" in (req.page_title or "").lower() or "registered office" in (req.page_title or "").lower()):
+        # County
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("county" in combined or "county" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                c_val = (req.form_values or {}).get("county", "NAIROBI")
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() == "choose":
+                    print(f"[DecideAction PLAYBOOK] Step 12: Select County '{c_val}' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_county",
+                        "decision": {
+                            "thought": f"Selecting County '{c_val}'.",
+                            "action": "select",
+                            "element_id": el.id,
+                            "fill_value": c_val,
+                            "confidence": 0.99,
+                            "milestone": "Select County",
+                            "reason": f"Setting county to '{c_val}'"
+                        }
+                    }
+
+        # District
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("district" in combined or "district" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                d_val = (req.form_values or {}).get("district", "NAIROBI CENTRAL")
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() == "choose":
+                    print(f"[DecideAction PLAYBOOK] Step 12: Select District '{d_val}' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_district",
+                        "decision": {
+                            "thought": f"Selecting District '{d_val}'.",
+                            "action": "select",
+                            "element_id": el.id,
+                            "fill_value": d_val,
+                            "confidence": 0.99,
+                            "milestone": "Select District",
+                            "reason": f"Setting district to '{d_val}'"
+                        }
+                    }
+
+        # Locality
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("locality" in combined or "locality" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                loc_val = (req.form_values or {}).get("locality", "CENTRAL BUSINESS DISTRICT")
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() == "choose":
+                    print(f"[DecideAction PLAYBOOK] Step 12: Select Locality '{loc_val}' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_locality",
+                        "decision": {
+                            "thought": f"Selecting Locality '{loc_val}'.",
+                            "action": "select",
+                            "element_id": el.id,
+                            "fill_value": loc_val,
+                            "confidence": 0.99,
+                            "milestone": "Select Locality",
+                            "reason": f"Setting locality to '{loc_val}'"
+                        }
+                    }
+
+        # Building/Plot
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("building" in combined or "plot" in combined or "building" in container or "plot" in container):
+                bldg_val = (req.form_values or {}).get("buildingName") or "Upper Hill Chambers"
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val:
+                    print(f"[DecideAction PLAYBOOK] Step 12: Fill Building Name on element {el.id}: {bldg_val}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_building",
+                        "decision": {
+                            "thought": f"Entering building name '{bldg_val}'.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": bldg_val,
+                            "confidence": 0.99,
+                            "milestone": "Building Name",
+                            "reason": f"Filling building name/plot: {bldg_val}"
+                        }
+                    }
+
+        # Street/Road
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("street" in combined or "road" in combined or "street" in container or "road" in container):
+                street_val = (req.form_values or {}).get("streetRoad") or "Ngong Avenue"
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val:
+                    print(f"[DecideAction PLAYBOOK] Step 12: Fill Street/Road on element {el.id}: {street_val}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_street",
+                        "decision": {
+                            "thought": f"Entering street '{street_val}'.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": street_val,
+                            "confidence": 0.99,
+                            "milestone": "Street/Road",
+                            "reason": f"Filling street/road: {street_val}"
+                        }
+                    }
+
+        # Postal Address
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("postal address" in combined or "postal address" in container):
+                p_addr = (req.form_values or {}).get("businessPostalAddress") or (req.form_values or {}).get("postalAddress") or "P. O. Box 30404"
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val:
+                    print(f"[DecideAction PLAYBOOK] Step 12: Fill Postal Address on element {el.id}: {p_addr}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_postal_address",
+                        "decision": {
+                            "thought": f"Entering postal address '{p_addr}'.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": p_addr,
+                            "confidence": 0.99,
+                            "milestone": "Postal Address",
+                            "reason": f"Filling postal address: {p_addr}"
+                        }
+                    }
+
+        # Postal Code
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input") or el.role == "combobox"):
+                raw_pc = (req.form_values or {}).get("businessPostalCode") or (req.form_values or {}).get("postalCode", "00100 - G.P.O NAIROBI")
+                pc_val = "00100 - G.P.O NAIROBI" if "00100" in str(raw_pc) else str(raw_pc)
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val or curr_val.lower() == "choose":
+                    print(f"[DecideAction PLAYBOOK] Step 12: Select postal code '{pc_val}' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_postal_code",
+                        "decision": {
+                            "thought": f"Setting postal code '{pc_val}'.",
+                            "action": "select",
+                            "element_id": el.id,
+                            "fill_value": pc_val,
+                            "confidence": 0.99,
+                            "milestone": "Postal Code",
+                            "reason": f"Setting postal code to '{pc_val}'"
+                        }
+                    }
+
+        # Mobile Number
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("mobile" in combined or "phone" in combined or "mobile" in container or "phone" in container):
+                phone_val = (req.form_values or {}).get("businessPhone") or (req.form_values or {}).get("phoneNumber") or "+254700000000"
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val:
+                    print(f"[DecideAction PLAYBOOK] Step 12: Fill Mobile Number on element {el.id}: {phone_val}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_mobile",
+                        "decision": {
+                            "thought": f"Entering mobile number '{phone_val}'.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": phone_val,
+                            "confidence": 0.99,
+                            "milestone": "Mobile Number",
+                            "reason": f"Filling business mobile number: {phone_val}"
+                        }
+                    }
+
+        # Company Email
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+            container = (el.container or "").lower()
+            if el.tag in ("input", "textarea") and ("email" in combined or "email" in container):
+                email_val = (req.form_values or {}).get("businessEmail") or (req.form_values or {}).get("email") or "info@business.co.ke"
+                curr_val = (getattr(el, "value", None) or "").strip()
+                if not curr_val:
+                    print(f"[DecideAction PLAYBOOK] Step 12: Fill Email on element {el.id}: {email_val}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_address_email",
+                        "decision": {
+                            "thought": f"Entering company email '{email_val}'.",
+                            "action": "fill",
+                            "element_id": el.id,
+                            "fill_value": email_val,
+                            "confidence": 0.99,
+                            "milestone": "Company Email",
+                            "reason": f"Filling company email: {email_val}"
+                        }
+                    }
+
+        # Click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction PLAYBOOK] Step 12: Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_address_next",
+                    "decision": {
+                        "thought": "Registered office address details are complete. Clicking 'Next' to advance to Ownership Information.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Ownership Information",
+                        "reason": "Clicking 'Next' to advance to Ownership Information step"
+                    }
+                }
+
+    # Step 13: Ownership Information (step=4)
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=4" in req.url or "ownership information" in (req.page_title or "").lower()):
+        has_modal = any(
+            ("modal" in (el.container or "").lower()) or
+            (el.tag == "button" and (el.text or "").strip().lower() == "save") or
+            ("id type" in f"{(el.text or '')} {(el.name or '')}".lower()) or
+            ("national id" in f"{(el.text or '')} {(el.name or '')}".lower())
+            for el in req.elements
+        )
+
+        if has_modal:
+            # 1. ID Type dropdown
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                container = (el.container or "").lower()
+                if ("id type" in combined or "id type" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                    id_type_val = (req.form_values or {}).get("idType", "Kenyan Citizen")
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val or curr_val.lower() == "choose":
+                        print(f"[DecideAction PLAYBOOK] Step 13: Select ID Type '{id_type_val}' on element {el.id}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_id_type",
+                            "decision": {
+                                "thought": f"Selecting ID Type '{id_type_val}'.",
+                                "action": "select",
+                                "element_id": el.id,
+                                "fill_value": id_type_val,
+                                "confidence": 0.99,
+                                "milestone": "Select ID Type",
+                                "reason": f"Setting ID Type to '{id_type_val}'"
+                            }
+                        }
+
+            # 2. National ID Number
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+                if el.tag in ("input", "textarea") and "national id" in combined:
+                    id_num = (req.form_values or {}).get("idNumber") or (req.form_values or {}).get("nationalId") or "42761734"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13: Fill National ID on element {el.id}: {id_num}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_national_id",
+                            "decision": {
+                                "thought": f"Entering National ID '{id_num}'.",
+                                "action": "fill",
+                                "element_id": el.id,
+                                "fill_value": id_num,
+                                "confidence": 0.99,
+                                "milestone": "Fill National ID",
+                                "reason": f"Entering National ID: {id_num}"
+                            }
+                        }
+
+            # 3. First Name
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+                if el.tag in ("input", "textarea") and "first name" in combined and "last" not in combined and "middle" not in combined:
+                    first_n = (req.form_values or {}).get("firstName") or "BILDAD"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13: Fill First Name on element {el.id}: {first_n}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_first_name",
+                            "decision": {
+                                "thought": f"Entering First Name '{first_n}' for registry verification search.",
+                                "action": "fill",
+                                "element_id": el.id,
+                                "fill_value": first_n,
+                                "confidence": 0.99,
+                                "milestone": "Fill First Name",
+                                "reason": f"Entering First Name: {first_n}"
+                            }
+                        }
+
+            # 4. Search button
+            already_searched = any(
+                "search" in (a.get("reason", "") + a.get("thought", "") + a.get("source", "")).lower()
+                for a in (req.action_history or [])
+            )
+            if not already_searched:
+                for el in req.elements:
+                    combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                    if el.tag == "button" and "search" in combined:
+                        print(f"[DecideAction PLAYBOOK] Step 13: Click Search button on element {el.id}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_search_button",
+                            "decision": {
+                                "thought": "Triggering eCitizen registry verification search to autofill citizen details.",
+                                "action": "click",
+                                "element_id": el.id,
+                                "confidence": 0.99,
+                                "milestone": "Execute Registry Search",
+                                "reason": "Clicking 'Search' to autofill citizen particulars"
+                            }
+                        }
+
+            # 5. Postal Address
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+                container = (el.container or "").lower()
+                if el.tag in ("input", "textarea") and ("postal address" in combined or "postal address" in container):
+                    post_addr = (req.form_values or {}).get("proprietorPostalAddress") or (req.form_values or {}).get("postalAddress") or "15"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13: Fill Postal Address on element {el.id}: {post_addr}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_postal_address",
+                            "decision": {
+                                "thought": f"Entering Postal Address '{post_addr}'.",
+                                "action": "fill",
+                                "element_id": el.id,
+                                "fill_value": post_addr,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor Postal Address",
+                                "reason": f"Filling postal address: {post_addr}"
+                            }
+                        }
+
+            # 6. Postal Code
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                container = (el.container or "").lower()
+                if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input") or el.role == "combobox"):
+                    raw_pc = (req.form_values or {}).get("proprietorPostalCode") or "10205 - MARAGUA"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val or curr_val.lower() == "choose":
+                        print(f"[DecideAction PLAYBOOK] Step 13: Select Postal Code '{raw_pc}' on element {el.id}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_postal_code",
+                            "decision": {
+                                "thought": f"Setting postal code '{raw_pc}'.",
+                                "action": "select",
+                                "element_id": el.id,
+                                "fill_value": raw_pc,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor Postal Code",
+                                "reason": f"Setting postal code to '{raw_pc}'"
+                            }
+                        }
+
+            # 7. Service Address
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+                container = (el.container or "").lower()
+                if el.tag in ("input", "textarea") and ("service address" in combined or "service address" in container):
+                    srv_addr = (req.form_values or {}).get("serviceAddress") or "15 maragua"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13: Fill Service Address on element {el.id}: {srv_addr}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_service_address",
+                            "decision": {
+                                "thought": f"Entering service address '{srv_addr}'.",
+                                "action": "fill",
+                                "element_id": el.id,
+                                "fill_value": srv_addr,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor Service Address",
+                                "reason": f"Filling service address: {srv_addr}"
+                            }
+                        }
+
+            # 8. Occupation
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+                container = (el.container or "").lower()
+                if el.tag in ("input", "textarea") and ("occupation" in combined or "occupation" in container):
+                    occ_val = (req.form_values or {}).get("occupation") or "software engineer"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13: Fill Occupation on element {el.id}: {occ_val}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_occupation",
+                            "decision": {
+                                "thought": f"Entering occupation '{occ_val}'.",
+                                "action": "fill",
+                                "element_id": el.id,
+                                "fill_value": occ_val,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor Occupation",
+                                "reason": f"Filling occupation: {occ_val}"
+                            }
+                        }
+
+            # 9. Physical Address: County
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                container = (el.container or "").lower()
+                if ("county" in combined or "county" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                    c_val = (req.form_values or {}).get("proprietorCounty") or "Kiambu"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val or curr_val.lower() == "choose":
+                        print(f"[DecideAction PLAYBOOK] Step 13: Select County '{c_val}' on element {el.id}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_county",
+                            "decision": {
+                                "thought": f"Selecting County '{c_val}'.",
+                                "action": "select",
+                                "element_id": el.id,
+                                "fill_value": c_val,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor County",
+                                "reason": f"Setting county to '{c_val}'"
+                            }
+                        }
+
+            # 10. Physical Address: District
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                container = (el.container or "").lower()
+                if ("district" in combined or "district" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                    d_val = (req.form_values or {}).get("proprietorDistrict") or "Ruiru District"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val or curr_val.lower() == "choose":
+                        print(f"[DecideAction PLAYBOOK] Step 13: Select District '{d_val}' on element {el.id}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_district",
+                            "decision": {
+                                "thought": f"Selecting District '{d_val}'.",
+                                "action": "select",
+                                "element_id": el.id,
+                                "fill_value": d_val,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor District",
+                                "reason": f"Setting district to '{d_val}'"
+                            }
+                        }
+
+            # 11. Physical Address: Locality
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                container = (el.container or "").lower()
+                if ("locality" in combined or "locality" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
+                    loc_val = (req.form_values or {}).get("proprietorLocality") or "Ruiru"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val or curr_val.lower() == "choose":
+                        print(f"[DecideAction PLAYBOOK] Step 13: Select Locality '{loc_val}' on element {el.id}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_locality",
+                            "decision": {
+                                "thought": f"Selecting Locality '{loc_val}'.",
+                                "action": "select",
+                                "element_id": el.id,
+                                "fill_value": loc_val,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor Locality",
+                                "reason": f"Setting locality to '{loc_val}'"
+                            }
+                        }
+
+            # 12. Physical Address: Building
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+                container = (el.container or "").lower()
+                if el.tag in ("input", "textarea") and ("building" in combined or "plot" in combined or "estate" in combined or "building" in container):
+                    bldg = (req.form_values or {}).get("proprietorBuilding") or "finance house"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13: Fill Building on element {el.id}: {bldg}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_bldg",
+                            "decision": {
+                                "thought": f"Entering building name '{bldg}'.",
+                                "action": "fill",
+                                "element_id": el.id,
+                                "fill_value": bldg,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor Building",
+                                "reason": f"Filling building name: {bldg}"
+                            }
+                        }
+
+            # 13. Physical Address: Street
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
+                container = (el.container or "").lower()
+                if el.tag in ("input", "textarea") and ("street" in combined or "road" in combined or "street" in container):
+                    street = (req.form_values or {}).get("proprietorStreet") or "kamiti road"
+                    curr_val = (getattr(el, "value", None) or "").strip()
+                    if not curr_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13: Fill Street on element {el.id}: {street}")
+                        return {
+                            "status": "success",
+                            "source": "playbook_proprietor_street",
+                            "decision": {
+                                "thought": f"Entering street '{street}'.",
+                                "action": "fill",
+                                "element_id": el.id,
+                                "fill_value": street,
+                                "confidence": 0.99,
+                                "milestone": "Proprietor Street",
+                                "reason": f"Filling street: {street}"
+                            }
+                        }
+
+            # 14. Save button in modal
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                if el.tag == "button" and "save" in combined:
+                    print(f"[DecideAction PLAYBOOK] Step 13: Click Save in modal on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_proprietor_save",
+                        "decision": {
+                            "thought": "All proprietor details are completed. Clicking 'Save' to commit proprietor info.",
+                            "action": "click",
+                            "element_id": el.id,
+                            "confidence": 0.99,
+                            "milestone": "Save Proprietor Info",
+                            "reason": "Clicking 'Save' inside modal"
+                        }
+                    }
+
+        # If Modal is NOT open:
+        has_proprietor_row = any("edit proprietor" in f"{(el.text or '')} {(el.name or '')}".lower() or "remove" in f"{(el.text or '')} {(el.name or '')}".lower() for el in req.elements)
+        if not has_proprietor_row:
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                if el.tag == "button" and "add proprietor" in combined:
+                    print(f"[DecideAction PLAYBOOK] Step 13: Click 'Add Proprietor' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_click_add_proprietor",
+                        "decision": {
+                            "thought": "No proprietor found in table. Clicking 'Add Proprietor' to open entry modal.",
+                            "action": "click",
+                            "element_id": el.id,
+                            "confidence": 0.99,
+                            "milestone": "Open Add Proprietor Modal",
+                            "reason": "Clicking 'Add Proprietor' button"
+                        }
+                    }
+
+        # Once proprietor is in the table, click Next
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "next" in combined:
+                print(f"[DecideAction PLAYBOOK] Step 13: Click 'Next' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_ownership_next",
+                    "decision": {
+                        "thought": "Proprietor information is recorded in table. Clicking 'Next' to proceed to Application Documents.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Application Documents",
+                        "reason": "Clicking 'Next' to advance to Application Documents step"
+                    }
+                }
+
+    # Step 14: Application Documents (step=5)
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=5" in req.url or "application documents" in (req.page_title or "").lower()):
+        has_uploaded_doc = any(
+            ("remove this file" in f"{(el.text or '')} {(el.name or '')}".lower()) or
+            any((el.text or "").lower().strip().endswith(ext) for ext in [".pdf", ".jpg", ".png", ".jpeg"]) or
+            (el.type == "file" and bool(getattr(el, "value", None)))
+            for el in req.elements
+        )
+
+        if has_uploaded_doc:
+            for el in req.elements:
+                combined = f"{(el.text or '')} {(el.name or '')}".lower()
+                if el.tag == "button" and "next" in combined:
+                    print(f"[DecideAction PLAYBOOK] Step 14: BN-2 document detected. Click 'Next' on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_application_documents_next",
+                        "decision": {
+                            "thought": "Signed BN-2 document has been uploaded. Clicking 'Next' to advance to Declaration.",
+                            "action": "click",
+                            "element_id": el.id,
+                            "confidence": 0.99,
+                            "milestone": "Proceed to Declaration",
+                            "reason": "Signed BN-2 form uploaded. Advancing to Declaration step."
+                        }
+                    }
+
+        print(f"[DecideAction PLAYBOOK] Step 14 awaiting signed BN-2 upload on {req.url}")
+        return {
+            "status": "success",
+            "source": "playbook_application_documents_wait",
+            "decision": {
+                "thought": "Statutory BN-2 form must be downloaded, signed by proprietor, and uploaded.",
+                "action": "wait",
+                "is_transient": False,
+                "element_id": None,
+                "handoff_trigger": "file_upload",
+                "milestone": "Awaiting Signed BN-2 Upload",
+                "confidence": 1.0,
+                "reason": "Please click 'CLICK HERE TO DOWNLOAD BN-2 form' to download your pre-filled form, physically sign it, scan or save as PDF/image, and upload it using 'Choose File'. Autopilot will automatically resume once the document is attached."
+            }
+        }
+
+    # Step 15: Declaration (step=6)
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=6" in req.url or "declaration" in (req.page_title or "").lower()):
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if (el.role == "checkbox" or el.tag == "input" or "checkbox" in combined) and ("confirm" in combined or "declaration" in combined or "registrar" in combined):
+                is_checked = getattr(el, "checked", False)
+                if not is_checked:
+                    print(f"[DecideAction PLAYBOOK] Step 15: Check statutory declaration checkbox on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "playbook_declaration_checkbox",
+                        "decision": {
+                            "thought": "Checking statutory confirmation checkbox affirming that all required application information has been provided.",
+                            "action": "click",
+                            "element_id": el.id,
+                            "confidence": 0.99,
+                            "milestone": "Statutory Declaration",
+                            "reason": "Checking declaration checkbox to certify application particulars"
+                        }
+                    }
+
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and ("preview" in combined or "next" in combined or "proceed" in combined):
+                print(f"[DecideAction PLAYBOOK] Step 15: Click 'Preview' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_declaration_preview",
+                    "decision": {
+                        "thought": "Statutory declaration confirmed. Clicking 'Preview' to proceed to final application review.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Proceed to Application Preview",
+                        "reason": "Clicking 'Preview' to view full application before final submission"
+                    }
+                }
+
+    # Step 16: Preview Review Summary (step=-1)
+    if "brsv2.ecitizen.go.ke" in req.url and ("step=-1" in req.url or "preview" in (req.page_title or "").lower()):
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if el.tag == "button" and "complete" in combined:
+                print(f"[DecideAction PLAYBOOK] Step 16: Complete button identified on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_application_review_complete",
+                    "decision": {
+                        "thought": "All registration sections (contacts, proprietor, signed BN-2 form, declaration) are verified on preview. Requesting user confirmation to click 'Complete' and submit application.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "requires_user_approval": True,
+                        "handoff_trigger": "approval",
+                        "milestone": "Final Application Review",
+                        "confidence": 1.0,
+                        "reason": "Please review the summary details above. If all information is clear and accurate, confirm to click 'Complete' to proceed to fee payment."
+                    }
+                }
+
+    # Step 17: Payment Checkpoint (/payment)
+    if "brsv2.ecitizen.go.ke" in req.url and ("/payment" in req.url or "payment" in (req.page_title or "").lower()):
+        print(f"[DecideAction PLAYBOOK] Step 17: Payment screen detected on {req.url}. Halting with terminal human handoff.")
+        return {
+            "status": "success",
+            "source": "playbook_payment_terminal_checkpoint",
+            "decision": {
+                "thought": "The application has reached the Pesaflow payment gateway. The user must manually select their payment mode (e.g. M-Pesa) and authorize the fee payment of KES 925.00. This concludes the autonomous session.",
+                "action": "wait",
+                "is_transient": False,
+                "element_id": None,
+                "handoff_trigger": "payment",
+                "milestone": "Statutory Payment Required",
+                "confidence": 1.0,
+                "reason": "Application successfully filed with BRS. Statutory invoice of KES 925.00 generated on Pesaflow. Please choose your payment mode (M-Pesa, Card, Bank) on the screen to complete the registration. Autopilot session complete."
+            }
+        }
 
     # -------------------------------------------------------------------------
     # PRIORITY 2: Generative Autonomous AI Reasoning (Qwen 2.5 7B & GPT Fallback)
