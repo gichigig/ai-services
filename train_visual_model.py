@@ -25,12 +25,13 @@ except Exception:
 
 # Modal image definition with optimized PyTorch, CUDA, Transformers, and PEFT
 if HAS_MODAL:
+    local_dataset_dir = "ai-service/dataset" if os.path.exists("ai-service/dataset") else "dataset"
     vlm_train_image = (
         modal.Image.debian_slim(python_version="3.11")
         .pip_install(
             "torch>=2.4.0",
             "torchvision>=0.19.0",
-            "transformers>=4.45.0",
+            "transformers>=4.45.0,<5.0.0",
             "accelerate>=0.34.0",
             "peft>=0.12.0",
             "bitsandbytes>=0.43.0",
@@ -38,9 +39,11 @@ if HAS_MODAL:
             "pillow>=10.4.0",
             "qwen-vl-utils",
             "sentencepiece",
-            "scipy"
+            "scipy",
+            "hf_transfer"
         )
-        .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
+        .env({"PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"})
+        .add_local_dir(local_dataset_dir, remote_path="/root/ai-service/dataset")
     )
 
     app = modal.App("ecitizen-vlm-training")
@@ -53,8 +56,8 @@ def train_vlm_worker(
     dataset_val_path: str = "ai-service/dataset/ecitizen_vlm_val.json",
     output_dir: str = "/vol/checkpoints/ecitizen_vlm_lora",
     epochs: int = 5,
-    batch_size: int = 2,
-    gradient_accumulation_steps: int = 4,
+    batch_size: int = 1,
+    gradient_accumulation_steps: int = 8,
     learning_rate: float = 2e-4,
     dry_run: bool = False
 ):
@@ -122,7 +125,7 @@ def train_vlm_worker(
     )
 
     print(f"Loading base processor and model: {model_id}...")
-    processor = AutoProcessor.from_pretrained(model_id, min_pixels=256*28*28, max_pixels=1280*28*28)
+    processor = AutoProcessor.from_pretrained(model_id, min_pixels=256*28*28, max_pixels=768*28*28)
 
     # Dynamic import for Qwen2.5-VL / Qwen2-VL
     try:
@@ -140,7 +143,7 @@ def train_vlm_worker(
         torch_dtype=torch.bfloat16
     )
 
-    model = prepare_model_for_kbit_training(model)
+    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
 
     print("Configuring LoRA adapter for multi-task screen-to-action grounding...")
     lora_config = LoraConfig(
@@ -157,9 +160,8 @@ def train_vlm_worker(
 
     # Custom Dataset class for VLM Conversations
     class EcitizenVLMDataset(torch.utils.data.Dataset):
-        def __init__(self, data_list, processor):
+        def __init__(self, data_list):
             self.data = data_list
-            self.processor = processor
 
         def __len__(self):
             return len(self.data)
@@ -188,47 +190,80 @@ def train_vlm_worker(
                     ]
                 }
             ]
+            return {"image": image, "messages": messages}
 
-            text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-            image_inputs = [image]
+    def vlm_data_collator(batch):
+        messages_list = [item["messages"] for item in batch]
+        texts = [
+            processor.apply_chat_template(msg, tokenize=False, add_generation_prompt=False)
+            for msg in messages_list
+        ]
+        try:
+            from qwen_vl_utils import process_vision_info
+            image_inputs, video_inputs = process_vision_info(messages_list)
+        except Exception:
+            image_inputs = [item["image"] for item in batch]
+            video_inputs = None
 
-            inputs = self.processor(
-                text=[text],
+        if video_inputs:
+            inputs = processor(
+                text=texts,
+                images=image_inputs,
+                videos=video_inputs,
+                padding=True,
+                return_tensors="pt"
+            )
+        else:
+            inputs = processor(
+                text=texts,
                 images=image_inputs,
                 padding=True,
                 return_tensors="pt"
             )
 
-            # Squeeze batch dimension for torch dataset
-            item_out = {k: v.squeeze(0) for k, v in inputs.items()}
-            item_out["labels"] = item_out["input_ids"].clone()
-            return item_out
+        inputs["labels"] = inputs["input_ids"].clone()
+        pad_id = processor.tokenizer.pad_token_id
+        if pad_id is not None:
+            inputs["labels"][inputs["labels"] == pad_id] = -100
+        return inputs
 
-    train_dataset = EcitizenVLMDataset(train_data, processor)
-    val_dataset = EcitizenVLMDataset(val_data, processor)
+    train_dataset = EcitizenVLMDataset(train_data)
+    val_dataset = EcitizenVLMDataset(val_data)
 
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        per_device_train_batch_size=batch_size,
-        gradient_accumulation_steps=gradient_accumulation_steps,
-        num_train_epochs=epochs,
-        learning_rate=learning_rate,
-        lr_scheduler_type="cosine",
-        warmup_ratio=0.05,
-        logging_steps=5,
-        save_strategy="epoch",
-        evaluation_strategy="epoch",
-        save_total_limit=2,
-        bf16=True,
-        optim="paged_adamw_8bit",
-        report_to="none"
-    )
+    import inspect
+    sig = inspect.signature(TrainingArguments.__init__).parameters
+    args_kwargs = {
+        "output_dir": output_dir,
+        "per_device_train_batch_size": batch_size,
+        "per_device_eval_batch_size": 1,
+        "gradient_accumulation_steps": gradient_accumulation_steps,
+        "gradient_checkpointing": True,
+        "gradient_checkpointing_kwargs": {"use_reentrant": False},
+        "num_train_epochs": epochs,
+        "learning_rate": learning_rate,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 5,
+        "logging_steps": 5,
+        "save_strategy": "epoch",
+        "save_total_limit": 2,
+        "bf16": True,
+        "optim": "paged_adamw_8bit",
+        "remove_unused_columns": False,
+        "report_to": "none"
+    }
+    if "eval_strategy" in sig:
+        args_kwargs["eval_strategy"] = "epoch"
+    elif "evaluation_strategy" in sig:
+        args_kwargs["evaluation_strategy"] = "epoch"
+
+    training_args = TrainingArguments(**args_kwargs)
 
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=val_dataset
+        eval_dataset=val_dataset,
+        data_collator=vlm_data_collator
     )
 
     print("Initiating fine-tuning loop...")
@@ -256,12 +291,7 @@ if HAS_MODAL:
         volumes={"/vol": vlm_volume}
     )
     def train_vlm_remote(model_id: str = "Qwen/Qwen2.5-VL-7B-Instruct", epochs: int = 5):
-        import shutil
-
-        # Ensure dataset images and manifests exist inside container
-        os.makedirs("/root/ai-service/dataset", exist_ok=True)
-        shutil.copytree("ai-service/dataset", "/root/ai-service/dataset", dirs_exist_ok=True)
-
+        os.chdir("/root")
         res = train_vlm_worker(
             model_id=model_id,
             dataset_train_path="/root/ai-service/dataset/ecitizen_vlm_train.json",
