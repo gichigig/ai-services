@@ -696,6 +696,38 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
             if web_sources:
                 decision["search_performed"] = True
                 decision["search_sources"] = web_sources
+
+            # Enforce pre-flight intake validation for business registration
+            s_id = decision.get("service_id", "")
+            opts = decision.get("options") or {}
+            if not opts.get("businessName1") and not opts.get("proposedName1"):
+                quoted = re.search(r'[\'"]([^\'"]+)[\'"]', clean_prompt)
+                if quoted:
+                    opts["businessName1"] = quoted.group(1).strip()
+                    opts["proposedName1"] = quoted.group(1).strip()
+                else:
+                    named_match = re.search(r'(?:named|called)\s+([A-Za-z0-9\s&]+?)(?:\s+on|\s+at|\s+in|\s*$)', clean_prompt, re.I)
+                    if named_match:
+                        opts["businessName1"] = named_match.group(1).strip()
+                        opts["proposedName1"] = named_match.group(1).strip()
+                decision["options"] = opts
+
+            has_explicit_launch = any(w in p_lower for w in ["start", "launch", "run", "proceed", "go ahead", "begin", "do it"])
+            if s_id in ("business_name_registration", "business_name_search"):
+                req_fields = ["natureOfBusiness", "county", "buildingName", "idNumber"]
+                missing = [f for f in req_fields if not opts.get(f)]
+                decision["missing_fields"] = missing
+                if not has_explicit_launch and missing:
+                    decision["ready_to_launch"] = False
+                    decision["type"] = "clarification"
+                    b_name = opts.get("businessName1") or opts.get("proposedName1") or "your business"
+                    decision["message"] = (
+                        f"I have initialized the registration plan for '{b_name}'. "
+                        "To ensure the copilot uses your accurate information rather than demo defaults, "
+                        "please review and fill your business details (nature of business, office address, and proprietor ID) "
+                        "in the Pre-Flight Card below, then click 'Launch Autopilot on BRS'."
+                    )
+
             return {"status": "success", "source": "qwen_2.5_7b", "result": decision}
     except Exception as qwen_err:
         print(f"Qwen 2.5 7B intent parsing note: {qwen_err}. Trying fallback...")
@@ -803,6 +835,43 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
             }
         }
 
+    has_explicit_launch = any(w in p for w in ["start", "launch", "run", "proceed", "go ahead", "begin", "do it"])
+    if service_id in ("business_name_registration", "business_name_search"):
+        quoted = re.search(r'[\'"]([^\'"]+)[\'"]', clean_prompt)
+        if quoted:
+            fallback_options["businessName1"] = quoted.group(1).strip()
+            fallback_options["proposedName1"] = quoted.group(1).strip()
+        else:
+            named_match = re.search(r'(?:named|called)\s+([A-Za-z0-9\s&]+?)(?:\s+on|\s+at|\s+in|\s*$)', clean_prompt, re.I)
+            if named_match:
+                fallback_options["businessName1"] = named_match.group(1).strip()
+                fallback_options["proposedName1"] = named_match.group(1).strip()
+
+        b_name = fallback_options.get("businessName1") or fallback_options.get("proposedName1") or "your business"
+        if not has_explicit_launch:
+            return {
+                "status": "success",
+                "source": "fallback",
+                "result": {
+                    "type": "clarification",
+                    "message": (
+                        f"I have initialized the registration plan for '{b_name}'. "
+                        "To ensure the copilot uses your accurate details instead of demo placeholders, "
+                        "please review and fill your business details (nature of business, office address, and proprietor ID) "
+                        "in the Pre-Flight Card below before launching."
+                    ),
+                    "service_id": service_id,
+                    "target_portal_url": target_portal_url,
+                    "task_goal": f"Navigate and process {service_title} on eCitizen",
+                    "detected_summary": f"Target: {short_name}",
+                    "options": fallback_options,
+                    "missing_fields": ["natureOfBusiness", "county", "buildingName", "idNumber"],
+                    "ready_to_launch": False,
+                    "confidence": 0.85,
+                    "reasoning": "Awaiting user confirmation of business registration particulars"
+                }
+            }
+
     return {
         "status": "success",
         "source": "fallback",
@@ -815,7 +884,7 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
             "detected_summary": f"Target: {short_name}",
             "options": fallback_options,
             "missing_fields": [],
-            "ready_to_launch": True,
+            "ready_to_launch": has_explicit_launch,
             "confidence": 0.85,
             "reasoning": f"Matched intent keywords for {service_title}"
         }
