@@ -125,7 +125,7 @@ def train_vlm_worker(
     )
 
     print(f"Loading base processor and model: {model_id}...")
-    processor = AutoProcessor.from_pretrained(model_id, min_pixels=256*28*28, max_pixels=768*28*28)
+    processor = AutoProcessor.from_pretrained(model_id, min_pixels=256*28*28, max_pixels=512*28*28)
 
     # Dynamic import for Qwen2.5-VL / Qwen2-VL
     try:
@@ -211,6 +211,8 @@ def train_vlm_worker(
                 images=image_inputs,
                 videos=video_inputs,
                 padding=True,
+                truncation=True,
+                max_length=2048,
                 return_tensors="pt"
             )
         else:
@@ -218,6 +220,8 @@ def train_vlm_worker(
                 text=texts,
                 images=image_inputs,
                 padding=True,
+                truncation=True,
+                max_length=2048,
                 return_tensors="pt"
             )
 
@@ -248,6 +252,9 @@ def train_vlm_worker(
         "save_total_limit": 2,
         "bf16": True,
         "optim": "paged_adamw_8bit",
+        "prediction_loss_only": True,
+        "eval_accumulation_steps": 1,
+        "dataloader_pin_memory": False,
         "remove_unused_columns": False,
         "report_to": "none"
     }
@@ -286,7 +293,7 @@ def train_vlm_worker(
 if HAS_MODAL:
     @app.function(
         image=vlm_train_image,
-        gpu="A10G",
+        gpu="A100",
         timeout=3600,
         volumes={"/vol": vlm_volume}
     )
@@ -313,7 +320,7 @@ if HAS_MODAL:
                 dry_run=True
             )
         else:
-            print("Dispatching remote fine-tuning job to Modal A10G GPU...")
+            print("Dispatching remote fine-tuning job to Modal A100 GPU...")
             result = train_vlm_remote.remote(model_id=model, epochs=epochs)
             print(f"Modal Remote Training Result: {result}")
 
