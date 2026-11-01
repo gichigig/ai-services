@@ -19,10 +19,10 @@ class AssignmentSolver:
         admission_no: str = "ADM/2026/0894",
         custom_instructions: str = "",
         custom_prompt: str = "",
-        model_name: str = "gpt_120b"
+        model_name: str = "qwen_2.5_7b"
     ) -> Dict[str, Any]:
         """
-        Synthesizes an academic-grade assignment solution using GPT OSS.
+        Synthesizes an academic-grade assignment solution using Qwen 2.5 7B / GPT OSS on Modal.
         Falls back to comprehensive academic structured synthesis if model connection is unavailable.
         """
         now = datetime.datetime.now()
@@ -30,11 +30,11 @@ class AssignmentSolver:
         full_subject = f"{unit_code}: {unit_name}".strip(": ")
         active_prompt = custom_prompt or custom_instructions
 
-        # Attempt to synthesize with GPT OSS on Modal
+        # Attempt to synthesize with QwenSmallModel on Modal
         try:
             import modal
-            GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
-            gpt_model = GptModelCls()
+            ModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
+            model_inst = ModelCls()
             
             system_prompt = (
                 "You are an elite university professor, researcher, and academic author. "
@@ -59,7 +59,7 @@ class AssignmentSolver:
                 "Provide an exceptionally detailed, rigorous, step-by-step academic solution."
             )
             
-            raw_response = await gpt_model.generate.remote.aio(
+            raw_response = await model_inst.generate.remote.aio(
                 system_message=system_prompt,
                 user_message=user_prompt,
                 temperature=0.6,
@@ -82,10 +82,10 @@ class AssignmentSolver:
                     "admission_no": admission_no,
                     "date": date_str,
                     "sections": parsed["sections"],
-                    "generated_by": "GPT OSS 120B (OpenAI / H200 SXM)"
+                    "generated_by": "Qwen 2.5 7B (Modal A10G)"
                 }
         except Exception as e:
-            print(f"[AssignmentSolver] GPT OSS remote generation note: {e}. Utilizing structured academic synthesis engine.")
+            print(f"[AssignmentSolver] Qwen small remote generation note: {e}. Utilizing structured academic synthesis engine.")
 
         # Fallback to local structured academic synthesis
         return cls.solve_assignment(

@@ -539,13 +539,13 @@ class EcitizenIntentRequest(BaseModel):
     history: Optional[List[Dict[str, Any]]] = None
     available_services: Optional[List[Dict[str, Any]]] = None
     user_context: Optional[Dict[str, Any]] = None
-    model_name: Optional[str] = "gpt_120b"
+    model_name: Optional[str] = "qwen_2.5_7b"
 
 @web_app.post("/ecitizen/parse-intent")
 async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
     """
     Conversational Multi-Turn AI Intent, Clarification, and Web Search engine for eCitizen.
-    Uses GPT OSS 120B on Modal and live web search to answer questions or ask clarifying
+    Uses Qwen 2.5 7B (AWQ) on Modal and live web search to answer questions or ask clarifying
     follow-up questions before initiating autonomous browser automation.
     """
     import json
@@ -680,7 +680,27 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
     if req.user_context:
         user_prompt += f"\nUser Context: {json.dumps(req.user_context)}"
 
-    # Attempt 1: GPT OSS 120B on Modal
+    # Attempt 1: QwenSmallModel on Modal (Qwen 2.5 7B Instruct AWQ, low latency)
+    try:
+        import modal
+        SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
+        small_model = SmallModelCls()
+        raw_res = await small_model.generate.remote.aio(
+            system_message=system_prompt,
+            user_message=user_prompt,
+            max_tokens=450
+        )
+        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if match:
+            decision = json.loads(match.group(0))
+            if web_sources:
+                decision["search_performed"] = True
+                decision["search_sources"] = web_sources
+            return {"status": "success", "source": "qwen_2.5_7b", "result": decision}
+    except Exception as qwen_err:
+        print(f"Qwen 2.5 7B intent parsing note: {qwen_err}. Trying fallback...")
+
+    # Attempt 2: GPT OSS 120B fallback
     try:
         import modal
         GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
@@ -698,27 +718,7 @@ async def ecitizen_parse_intent_endpoint(req: EcitizenIntentRequest):
                 decision["search_sources"] = web_sources
             return {"status": "success", "source": "gpt_120b", "result": decision}
     except Exception as gpt_err:
-        print(f"GPT OSS 120B intent parsing note: {gpt_err}. Trying Qwen fallback...")
-
-    # Attempt 2: QwenSmallModel fallback
-    try:
-        import modal
-        SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
-        small_model = SmallModelCls()
-        raw_res = await small_model.generate.remote.aio(
-            system_message=system_prompt,
-            user_message=user_prompt,
-            max_tokens=450
-        )
-        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
-        if match:
-            decision = json.loads(match.group(0))
-            if web_sources:
-                decision["search_performed"] = True
-                decision["search_sources"] = web_sources
-            return {"status": "success", "source": "qwen_small", "result": decision}
-    except Exception as qwen_err:
-        print(f"Qwen intent parsing fallback note: {qwen_err}")
+        print(f"GPT OSS 120B intent parsing fallback note: {gpt_err}")
 
     # Robust multi-service heuristic fallback resolver
     p = clean_prompt.lower().replace("licence", "license")
@@ -843,7 +843,7 @@ class EcitizenActionRequest(BaseModel):
     form_values: Optional[Dict[str, Any]] = None
     action_history: Optional[List[Dict[str, Any]]] = None
     last_error: Optional[str] = None
-    model_name: Optional[str] = "gpt_120b"
+    model_name: Optional[str] = "qwen_2.5_7b"
     screenshot_b64: Optional[str] = None
     viewport: Optional[Dict[str, Any]] = None
 
@@ -851,7 +851,7 @@ class EcitizenActionRequest(BaseModel):
 async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
     """
     Autonomous DOM Vision & Reasoning endpoint for eCitizen government portal navigation.
-    Uses GPT OSS 120B to decide which element to click, fill, or select based on live DOM perception.
+    Uses Qwen 2.5 7B (AWQ) on Modal to decide which element to click, fill, or select based on live DOM perception.
     """
     import json
     import re
@@ -1158,7 +1158,29 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 }
         return None
 
-    # First attempt: GPT OSS 120B on Modal
+    # First attempt: QwenSmallModel on Modal (Qwen 2.5 7B Instruct AWQ, low latency)
+    try:
+        import modal
+        SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
+        small_model = SmallModelCls()
+        raw_res = await small_model.generate.remote.aio(
+            system_message=system_prompt,
+            user_message=user_prompt,
+            max_tokens=400
+        )
+        decision = extract_json_object(raw_res)
+        if decision and isinstance(decision, dict) and "action" in decision:
+            rejection = validate_anti_hallucination(decision)
+            if rejection:
+                return rejection
+            print(f"[DecideAction SUCCESS] Source=qwen_2.5_7b | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
+            return {"status": "success", "source": "qwen_2.5_7b", "decision": decision}
+        else:
+            print(f"[DecideAction PARSE NOTE] Qwen 2.5 7B output not clean JSON dict: {str(raw_res)[:180]}. Trying fallback...")
+    except Exception as qwen_err:
+        print(f"Qwen 2.5 7B call note: {qwen_err}. Trying fallback...")
+
+    # Second attempt: GPT OSS 120B fallback
     try:
         import modal
         GptModelCls = modal.Cls.from_name("bruv-schools-llm", "GptOss120bModel")
@@ -1176,31 +1198,9 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             print(f"[DecideAction SUCCESS] Source=gpt_120b | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
             return {"status": "success", "source": "gpt_120b", "decision": decision}
         else:
-            print(f"[DecideAction PARSE NOTE] GPT 120B output not clean JSON dict: {str(raw_res)[:180]}. Trying Qwen fallback...")
+            print(f"[DecideAction PARSE NOTE] GPT 120B output not clean JSON dict: {str(raw_res)[:180]}")
     except Exception as gpt_err:
-        print(f"GPT OSS 120B call note: {gpt_err}. Trying Qwen fallback...")
-
-    # Second attempt: QwenSmallModel fallback
-    try:
-        import modal
-        SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
-        small_model = SmallModelCls()
-        raw_res = await small_model.generate.remote.aio(
-            system_message=system_prompt,
-            user_message=user_prompt,
-            max_tokens=400
-        )
-        decision = extract_json_object(raw_res)
-        if decision and isinstance(decision, dict) and "action" in decision:
-            rejection = validate_anti_hallucination(decision)
-            if rejection:
-                return rejection
-            print(f"[DecideAction SUCCESS] Source=qwen_small | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
-            return {"status": "success", "source": "qwen_small", "decision": decision}
-        else:
-            print(f"[DecideAction PARSE NOTE] Qwen output not clean JSON dict: {str(raw_res)[:180]}")
-    except Exception as qwen_err:
-        print(f"Qwen fallback note: {qwen_err}")
+        print(f"GPT OSS 120B fallback note: {gpt_err}")
 
     # Heuristic fallback if LLM container is spinning up
     if "serviceportal.ntsa" in req.url or "ntsa.go.ke" in req.url:

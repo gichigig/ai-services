@@ -47,7 +47,7 @@ class AutopilotRunRequest(BaseModel):
     portal_url: Optional[str] = Field("http://127.0.0.1:8001/mock-portal/login")
     fcm_token: Optional[str] = Field(None, example="eK29x...")
     require_approval: Optional[bool] = Field(False, example=True)
-    model: Optional[str] = Field("gpt_120b", example="gpt_120b")
+    model: Optional[str] = Field("qwen_2.5_7b", example="qwen_2.5_7b")
 
 class ProvideCredentialsRequest(BaseModel):
     username: str
