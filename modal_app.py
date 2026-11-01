@@ -1156,6 +1156,27 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                         "reason": f"Target element #{el_id} was not verified in latest browser inspection. Requesting fresh page snapshot."
                     }
                 }
+
+        # Guard against Premature Completion on Dashboards or Form Pages
+        if act == "done":
+            url_clean = (req.url or "").lower().rstrip("/")
+            is_early_or_form = (
+                url_clean.endswith("brs.ecitizen.go.ke") or
+                "/services" in url_clean or
+                "/switcher" in url_clean or
+                "/auth/login" in url_clean or
+                "/registries/brs/dashboard" in url_clean or
+                "step=" in url_clean or
+                "accounts.ecitizen.go.ke" in url_clean
+            ) and not any(k in url_clean for k in ["/payment", "invoice", "receipt", "confirmation", "download_receipt"])
+
+            if is_early_or_form:
+                print(f"[DecideAction ANTI-HALLUCINATION REJECTION] Model claimed action='done' on early/form stage '{req.url}'. Mistook existing profile businesses for current task completion.")
+                return {
+                    "status": "rejected",
+                    "source": "anti_premature_done_guard",
+                    "decision": None
+                }
         return None
 
     # First attempt: QwenSmallModel on Modal (Qwen 2.5 7B Instruct AWQ, low latency)
@@ -1172,9 +1193,13 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         if decision and isinstance(decision, dict) and "action" in decision:
             rejection = validate_anti_hallucination(decision)
             if rejection:
-                return rejection
-            print(f"[DecideAction SUCCESS] Source=qwen_2.5_7b | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
-            return {"status": "success", "source": "qwen_2.5_7b", "decision": decision}
+                if rejection.get("source") == "anti_premature_done_guard":
+                    print("[DecideAction] Premature 'done' rejected. Falling through to deterministic playbook heuristics.")
+                else:
+                    return rejection
+            else:
+                print(f"[DecideAction SUCCESS] Source=qwen_2.5_7b | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
+                return {"status": "success", "source": "qwen_2.5_7b", "decision": decision}
         else:
             print(f"[DecideAction PARSE NOTE] Qwen 2.5 7B output not clean JSON dict: {str(raw_res)[:180]}. Trying fallback...")
     except Exception as qwen_err:
@@ -1194,15 +1219,99 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
         if decision and isinstance(decision, dict) and "action" in decision:
             rejection = validate_anti_hallucination(decision)
             if rejection:
-                return rejection
-            print(f"[DecideAction SUCCESS] Source=gpt_120b | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
-            return {"status": "success", "source": "gpt_120b", "decision": decision}
+                if rejection.get("source") == "anti_premature_done_guard":
+                    print("[DecideAction] Premature 'done' rejected on GPT fallback. Falling through to deterministic playbook heuristics.")
+                else:
+                    return rejection
+            else:
+                print(f"[DecideAction SUCCESS] Source=gpt_120b | Action={decision.get('action')} | Element={decision.get('element_id')} | Reason={decision.get('reason')}")
+                return {"status": "success", "source": "gpt_120b", "decision": decision}
         else:
             print(f"[DecideAction PARSE NOTE] GPT 120B output not clean JSON dict: {str(raw_res)[:180]}")
     except Exception as gpt_err:
         print(f"GPT OSS 120B fallback note: {gpt_err}")
 
     # Heuristic fallback if LLM container is spinning up
+    # Step 01: BRS Dashboard (brs.ecitizen.go.ke/ or eBusiness home)
+    if ("brs.ecitizen.go.ke" in req.url and "brsv2" not in req.url) and (req.url.rstrip("/").endswith("brs.ecitizen.go.ke") or "/dashboard" in req.url or "ebusiness" in (req.page_title or "").lower()):
+        # First priority: Click "+ Make Application" button in "My Applications" container
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "make application" in combined and "my applications" in container:
+                print(f"[DecideAction HEURISTIC] Step 01: Click '+ Make Application' in My Applications on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_brs_dashboard_make_application",
+                    "decision": {
+                        "thought": "Detected BRS eBusiness dashboard. Clicking '+ Make Application' in My Applications card to navigate to BRS service catalog.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Start BRS Application",
+                        "reason": "Clicking '+ Make Application' to begin business registration service selection"
+                    }
+                }
+
+        # Second priority: Any "Make Application" button or link
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if "make application" in combined:
+                print(f"[DecideAction HEURISTIC] Step 01: Click 'Make Application' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_brs_dashboard_make_application_generic",
+                    "decision": {
+                        "thought": "Detected BRS eBusiness dashboard. Clicking 'Make Application' to navigate to services.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Start BRS Application",
+                        "reason": "Clicking 'Make Application' link to navigate to BRS services"
+                    }
+                }
+
+    # Step 02 & Step 03: BRS Service Selection & Migration Modal (brs.ecitizen.go.ke/services)
+    if "brs.ecitizen.go.ke" in req.url and "brsv2" not in req.url and "/services" in req.url:
+        # Step 03: Check if BRS V2 Notice Modal is open
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("modal" in container or "dialog" in container) and ("apply now" in combined or "apply" in combined or "proceed" in combined):
+                print(f"[DecideAction HEURISTIC] Step 03: Confirm BRS V2 modal on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "heuristic_brs_confirm_modal",
+                    "decision": {
+                        "thought": "Detected BRS V2 public announcement modal. Clicking 'Apply Now »' to confirm and redirect to BRS V2.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Confirm BRS V2 Modal",
+                        "reason": "Confirming BRS V2 migration modal to proceed to registration portal"
+                    }
+                }
+
+        # Step 02: Click "Apply now" under "BRS V2" (exclude Manual Services)
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "apply" in combined and "manual" not in container:
+                if "v2" in container or "brs" in container or "companies" in container or "business" in container or "v2" in combined:
+                    print(f"[DecideAction HEURISTIC] Step 02: Select BRS V2 Service on element {el.id}")
+                    return {
+                        "status": "success",
+                        "source": "heuristic_brs_select_v2_service",
+                        "decision": {
+                            "thought": "Detected BRS service listing. Clicking 'Apply now' under BRS V2 to begin automated registration.",
+                            "action": "click",
+                            "element_id": el.id,
+                            "confidence": 0.99,
+                            "milestone": "Select BRS V2",
+                            "reason": "Selecting automated BRS V2 service"
+                        }
+                    }
+
     if "serviceportal.ntsa" in req.url or "ntsa.go.ke" in req.url:
         for el in req.elements:
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
