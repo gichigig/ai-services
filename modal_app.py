@@ -981,6 +981,11 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
 
     system_prompt = (
         "ECITIZEN AI BROWSER AGENT — MASTER SYSTEM INSTRUCTIONS\n\n"
+        "BRS PORTAL MIGRATION POLICY:\n"
+        "All Business Name Registrations and Company Registrations have migrated to BRS V2.\n"
+        "- NEVER select or navigate to 'Manual Services'.\n"
+        "- ALWAYS select 'Brs V2' (click 'Apply now' under Brs V2 card).\n"
+        "- When the BRS V2 migration modal appears, click 'Apply Now »' to proceed.\n\n"
         "STRICT ANTI-HALLUCINATION AND BROWSER CONTROL POLICY:\n\n"
         "EVIDENCE REQUIREMENT:\n"
         "Every browser action must be supported by evidence obtained from the latest browser inspection.\n"
@@ -1177,8 +1182,224 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                     "source": "anti_premature_done_guard",
                     "decision": None
                 }
+
+        # Guard against Illegal Navigation to Deprecated Manual Services
+        if act == "navigate":
+            t_url = (decision.get("target_url") or "").lower()
+            if "manual" in t_url or "business-name-search" in t_url:
+                print(f"[DecideAction ANTI-HALLUCINATION REJECTION] Model attempted navigation to deprecated manual services: {t_url}. Rejecting.")
+                return {
+                    "status": "rejected",
+                    "source": "anti_manual_service_guard",
+                    "decision": None
+                }
         return None
 
+    # -------------------------------------------------------------------------
+    # PRIORITY 1: Deterministic Playbook Verification Gate (0ms Latency & 0 Hallucination)
+    # -------------------------------------------------------------------------
+    # Step 02 & Step 03: BRS Service Selection & Migration Modal (brs.ecitizen.go.ke/services or /accounts/.../services)
+    if "brs.ecitizen.go.ke" in req.url and "brsv2" not in req.url and "/services" in req.url:
+        # Step 03: Check if BRS V2 Notice Modal is open
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if ("modal" in container or "dialog" in container or "modal" in el.tag or "announcement" in container) and ("apply now" in combined or "apply" in combined or "proceed" in combined or "click here" in combined):
+                print(f"[DecideAction PLAYBOOK] Step 03: Confirm BRS V2 modal on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_brs_confirm_modal",
+                    "decision": {
+                        "thought": "Detected BRS V2 public announcement modal. Clicking 'Apply Now »' to confirm and redirect to BRS V2.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Confirm BRS V2 Modal",
+                        "reason": "Confirming BRS V2 migration modal to proceed to registration portal"
+                    }
+                }
+
+        # Step 02: Locate "Apply now" under "Brs V2" (strictly EXCLUDING "Manual Services")
+        apply_elements = []
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "apply" in combined:
+                is_manual = "manual" in container or "manual" in combined
+                apply_elements.append((el, is_manual, container))
+
+        for el, is_man, cont in apply_elements:
+            if not is_man and ("v2" in cont or "brs" in cont or "companies" in cont or "2" in cont):
+                print(f"[DecideAction PLAYBOOK] Step 02: Found Brs V2 Apply button {el.id} (container: {cont})")
+                return {
+                    "status": "success",
+                    "source": "playbook_brs_select_v2_service",
+                    "decision": {
+                        "thought": "Detected BRS service listing. Clicking 'Apply now' under Brs V2 card to begin automated registration.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Select BRS V2",
+                        "reason": "Selecting automated Brs V2 service"
+                    }
+                }
+
+        non_manual_applies = [el for el, is_man, _ in apply_elements if not is_man]
+        if non_manual_applies:
+            v2_el = non_manual_applies[-1]
+            print(f"[DecideAction PLAYBOOK] Step 02: Selected non-manual Apply button {v2_el.id}")
+            return {
+                "status": "success",
+                "source": "playbook_brs_select_v2_fallback",
+                "decision": {
+                    "thought": "Clicking 'Apply now' for Brs V2 (skipping Manual Services).",
+                    "action": "click",
+                    "element_id": v2_el.id,
+                    "confidence": 0.99,
+                    "milestone": "Select BRS V2",
+                    "reason": "Clicking 'Apply now' under Brs V2"
+                }
+            }
+
+    # Step 01: BRS Dashboard (brs.ecitizen.go.ke/ or /dashboard, strictly NOT /services)
+    is_brs_v1 = "brs.ecitizen.go.ke" in req.url and "brsv2" not in req.url
+    if is_brs_v1 and "/services" not in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "make application" in combined and "my applications" in container:
+                print(f"[DecideAction PLAYBOOK] Step 01: Click '+ Make Application' in My Applications on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_brs_dashboard_make_application",
+                    "decision": {
+                        "thought": "Detected BRS eBusiness dashboard. Clicking '+ Make Application' in My Applications card to navigate to BRS service catalog.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Start BRS Application",
+                        "reason": "Clicking '+ Make Application' to begin business registration service selection"
+                    }
+                }
+
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if "make application" in combined:
+                print(f"[DecideAction PLAYBOOK] Step 01: Click 'Make Application' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_brs_dashboard_make_application_generic",
+                    "decision": {
+                        "thought": "Detected BRS eBusiness dashboard. Clicking 'Make Application' to navigate to services.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Start BRS Application",
+                        "reason": "Clicking 'Make Application' link to navigate to BRS services"
+                    }
+                }
+
+    # Step 04: BRS V2 SSO Landing Gateway
+    if "brsv2.ecitizen.go.ke" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if "login with ecitizen" in combined or ("login" in combined and "ecitizen" in combined):
+                print(f"[DecideAction PLAYBOOK] Step 04: BRS V2 SSO sign-in on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_brsv2_sso",
+                    "decision": {
+                        "thought": "Detected BRS V2 SSO gateway. Clicking 'Login with eCitizen' to perform single sign-on handshake.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "BRS V2 SSO Login",
+                        "reason": "Clicking 'Login with eCitizen' to authenticate via active eCitizen session"
+                    }
+                }
+
+    # Step 05: Account Switcher
+    if "account-switcher" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "personal" in combined or "personal" in container or any(k in combined for k in ["42761734", "proceed to your personal account", "bildad"]):
+                print(f"[DecideAction PLAYBOOK] Step 05: Account Switcher personal account on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_account_switcher",
+                    "decision": {
+                        "thought": "Detected eCitizen account switcher. Selecting 'Personal Account' to complete OAuth handshake and proceed to BRS V2.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Select Personal Account",
+                        "reason": "Selecting personal account to complete login into BRS V2"
+                    }
+                }
+
+    # Step 06: OAuth Consent Proceed
+    if "accounts.ecitizen.go.ke" in req.url and "/authorize" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            if "proceed" in combined:
+                print(f"[DecideAction PLAYBOOK] Step 06: OAuth consent 'Proceed' on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_oauth_proceed",
+                    "decision": {
+                        "thought": "Detected eCitizen OAuth authorization consent screen. Clicking 'Proceed' to complete authorization handshake.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "OAuth Consent",
+                        "reason": "Clicking 'Proceed' to authorize single sign-on into BRS V2"
+                    }
+                }
+
+    # Step 07: BRS V2 Switcher Companies Registry Selection
+    if "brsv2.ecitizen.go.ke" in req.url and "/switcher" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "proceed" in combined and ("companies registry" in container or "companies" in container or "responsible for registering" in container):
+                print(f"[DecideAction PLAYBOOK] Step 07: Companies Registry selection on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_companies_registry",
+                    "decision": {
+                        "thought": "Detected BRS V2 Registry Switcher. Clicking 'Proceed' under 'Companies Registry Services' for business name registration.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Companies Registry",
+                        "reason": "Selecting Companies Registry Services to register business name"
+                    }
+                }
+
+    # Step 08: BRS V2 Dashboard -> Apply Business Name
+    if "brsv2.ecitizen.go.ke" in req.url and "/registries/brs/dashboard" in req.url:
+        for el in req.elements:
+            combined = f"{(el.text or '')} {(el.name or '')}".lower()
+            container = (el.container or "").lower()
+            if "apply" in combined and ("business name" in container or "business name" in combined or "registration of a business name" in container):
+                print(f"[DecideAction PLAYBOOK] Step 08: Business Name Registration Apply on element {el.id}")
+                return {
+                    "status": "success",
+                    "source": "playbook_register_business_name",
+                    "decision": {
+                        "thought": "Detected BRS V2 dashboard. Clicking 'Apply' under 'Registration Of A Business Name'.",
+                        "action": "click",
+                        "element_id": el.id,
+                        "confidence": 0.99,
+                        "milestone": "Apply Business Name",
+                        "reason": "Clicking 'Apply' to initiate Registration of a Business Name"
+                    }
+                }
+
+    # -------------------------------------------------------------------------
+    # PRIORITY 2: Generative Autonomous AI Reasoning (Qwen 2.5 7B & GPT Fallback)
+    # -------------------------------------------------------------------------
     # First attempt: QwenSmallModel on Modal (Qwen 2.5 7B Instruct AWQ, low latency)
     try:
         import modal
