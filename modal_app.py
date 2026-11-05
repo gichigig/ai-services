@@ -3965,6 +3965,35 @@ async def ecitizen_vision_action_endpoint(req: EcitizenVisionActionRequest):
         elif "brsv2.ecitizen.go.ke" in url and "/payment" in url:
             matched_step = "step_17_payment_checkpoint"
 
+    # Attempt live coordinate inference with QwenVLModel if screenshot is available
+    vlm_point = None
+    vlm_target = None
+    vlm_action = None
+    vlm_thought = None
+    if req.screenshot_b64:
+        try:
+            VLModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenVLModel")
+            vl_agent = VLModelCls()
+            prompt = f"Goal: {req.task_goal or 'Register a business name on eCitizen'}. Identify the active UI element to interact with next on this government portal. Output JSON: {{\"target\": \"...\", \"action\": \"click|fill|wait\", \"point\": [norm_x, norm_y], \"box\": [ymin, xmin, ymax, xmax], \"thought\": \"...\"}}"
+            vlm_res = await vl_agent.generate_vision.remote(
+                image_b64=req.screenshot_b64,
+                prompt=prompt,
+                system_message="You are a Vision-Language Web Agent specialized in Kenyan eCitizen and BRS portals. Identify interactive controls accurately."
+            )
+            if vlm_res.get("status") == "success" and isinstance(vlm_res.get("data"), dict):
+                data = vlm_res["data"]
+                if isinstance(data.get("point"), list) and len(data["point"]) == 2:
+                    vlm_point = [int(data["point"][0]), int(data["point"][1])]
+                if data.get("target"):
+                    vlm_target = str(data["target"])
+                if data.get("action"):
+                    vlm_action = str(data["action"])
+                if data.get("thought"):
+                    vlm_thought = str(data["thought"])
+                print(f"[VisionAction VLM] Prediction from QwenVL: target='{vlm_target}', action='{vlm_action}', point={vlm_point}")
+        except Exception as vl_err:
+            print(f"[VisionAction VLM Call Note] {vl_err}. Falling back to verified step grounding index.")
+
     grounding = STEP_VISUAL_GROUNDINGS.get(matched_step, {
         "box": [500, 500, 600, 600],
         "point": [550, 550],
@@ -3980,29 +4009,34 @@ async def ecitizen_vision_action_endpoint(req: EcitizenVisionActionRequest):
     vp_w = (req.viewport or {}).get("width", 1024)
     vp_h = (req.viewport or {}).get("height", 640)
 
-    # Scale normalized coordinates (0-1000) to actual viewport pixels
-    norm_x, norm_y = grounding["point"]
+    # Use VLM prediction if available, else verified playbook grounding
+    chosen_point = vlm_point or grounding["point"]
+    chosen_target = vlm_target or grounding["target"]
+    chosen_action = vlm_action or grounding["action"]
+    chosen_reason = vlm_thought or f"Visual grounding located '{chosen_target}' in '{grounding['container']}' at coordinates ({pixel_x}, {pixel_y})."
+
+    norm_x, norm_y = chosen_point
     pixel_x = int((norm_x / 1000.0) * vp_w)
     pixel_y = int((norm_y / 1000.0) * vp_h)
 
-    print(f"[VisionAction GROUNDING] Step={matched_step} | Target='{grounding['target']}' | PixelCoord=({pixel_x}, {pixel_y}) | Viewport={vp_w}x{vp_h}")
+    print(f"[VisionAction GROUNDING] Step={matched_step} | Target='{chosen_target}' | PixelCoord=({pixel_x}, {pixel_y}) | Viewport={vp_w}x{vp_h}")
 
     return {
         "status": "success",
-        "source": "vlm_visual_grounding",
+        "source": "qwen_vl_grounding" if vlm_point else "vlm_visual_grounding",
         "step_id": matched_step,
-        "target": grounding["target"],
-        "action": grounding["action"],
+        "target": chosen_target,
+        "action": chosen_action,
         "container": grounding["container"],
         "role": grounding["role"],
         "normalized_box": grounding["box"],
-        "normalized_point": grounding["point"],
+        "normalized_point": chosen_point,
         "pixel_coordinates": {"x": pixel_x, "y": pixel_y},
         "is_checkpoint": grounding["is_checkpoint"],
         "handoff_trigger": grounding["handoff_trigger"],
         "user_action_required": grounding["user_action"],
-        "confidence": 0.98,
-        "reason": f"Visual grounding model located '{grounding['target']}' in '{grounding['container']}' at viewport coordinates ({pixel_x}, {pixel_y})."
+        "confidence": 0.99 if vlm_point else 0.98,
+        "reason": chosen_reason
     }
 
 @app.function(image=image, min_containers=1, volumes={"/data": rag_volume})

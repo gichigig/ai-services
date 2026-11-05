@@ -8,8 +8,8 @@ vllm_image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
         "vllm==0.6.6.post1",
-        "transformers>=4.44.0,<5.0.0",
-        "accelerate",
+        "transformers>=4.49.0",
+        "accelerate>=0.26.0",
         "hf-transfer==0.1.8",
         "pyairports",
         "duckduckgo-search==5.3.1",
@@ -22,12 +22,26 @@ vllm_image = (
     .add_local_python_source("timetable_generator")
 )
 
+vlm_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .pip_install(
+        "transformers>=4.49.0",
+        "accelerate>=0.26.0",
+        "torchvision",
+        "qwen-vl-utils",
+        "hf-transfer==0.1.8",
+        "pillow",
+    )
+    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
+)
+
 # max_inputs=20 means 1 GPU handles up to 20 requests at once before booting a second GPU
 @app.cls(gpu="A10G", image=vllm_image, timeout=1200, min_containers=0, scaledown_window=30)
 @modal.concurrent(max_inputs=20)
 class QwenSmallModel:
     """
-    Handles the smaller '7B' Qwen model using AWQ quantization for A10G.
+    Handles the small/dense Qwen models (e.g. Qwen/Qwen3-8B with fallback to Qwen/Qwen2.5-7B-Instruct-AWQ).
+    Supports thinking mode and DOM action decisions on A10G.
     Automatically scales down to 0 after 30 seconds of inactivity.
     """
     @modal.enter()
@@ -36,15 +50,30 @@ class QwenSmallModel:
         from transformers import AutoTokenizer
         import os
         
-        model_name = os.getenv("QWEN_SMALL_MODEL", "Qwen/Qwen2.5-7B-Instruct-AWQ")
-        engine_args = AsyncEngineArgs(
-            model=model_name,
-            tensor_parallel_size=1,
-            max_model_len=4096,
-            enforce_eager=True,
-        )
-        self.engine = AsyncLLMEngine.from_engine_args(engine_args)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model_name = os.getenv("QWEN_SMALL_MODEL", "Qwen/Qwen3-8B")
+        try:
+            engine_args = AsyncEngineArgs(
+                model=model_name,
+                tensor_parallel_size=1,
+                max_model_len=4096,
+                enforce_eager=True,
+                trust_remote_code=True,
+            )
+            self.engine = AsyncLLMEngine.from_engine_args(engine_args)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+            self.active_model = model_name
+        except Exception as e:
+            print(f"[QwenSmallModel] Note on loading {model_name}: {e}. Falling back to Qwen2.5-7B-Instruct-AWQ...")
+            fallback_model = "Qwen/Qwen2.5-7B-Instruct-AWQ"
+            engine_args = AsyncEngineArgs(
+                model=fallback_model,
+                tensor_parallel_size=1,
+                max_model_len=4096,
+                enforce_eager=True,
+            )
+            self.engine = AsyncLLMEngine.from_engine_args(engine_args)
+            self.tokenizer = AutoTokenizer.from_pretrained(fallback_model)
+            self.active_model = fallback_model
 
     @modal.method()
     async def warmup(self) -> bool:
@@ -153,7 +182,7 @@ class GptOss120bModel:
 @modal.concurrent(max_inputs=20)
 class QwenLargeModel:
     """
-    Handles the massive '32B' Qwen model using AWQ quantization for A100.
+    Handles large Qwen models (e.g. Qwen/Qwen3.8-27B with fallback to Qwen/Qwen2.5-32B-Instruct-AWQ).
     """
     @modal.enter()
     def setup(self):
@@ -161,15 +190,30 @@ class QwenLargeModel:
         from transformers import AutoTokenizer
         import os
         
-        model_name = os.getenv("QWEN_LARGE_MODEL", "Qwen/Qwen2.5-32B-Instruct-AWQ")
-        engine_args = AsyncEngineArgs(
-            model=model_name,
-            tensor_parallel_size=1,
-            max_model_len=8192,
-            enforce_eager=True,
-        )
-        self.engine = AsyncLLMEngine.from_engine_args(engine_args)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model_name = os.getenv("QWEN_LARGE_MODEL", "Qwen/Qwen3.8-27B")
+        try:
+            engine_args = AsyncEngineArgs(
+                model=model_name,
+                tensor_parallel_size=1,
+                max_model_len=8192,
+                enforce_eager=True,
+                trust_remote_code=True,
+            )
+            self.engine = AsyncLLMEngine.from_engine_args(engine_args)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+            self.active_model = model_name
+        except Exception as e:
+            print(f"[QwenLargeModel] Note on loading {model_name}: {e}. Falling back to Qwen2.5-32B-Instruct-AWQ...")
+            fallback_model = "Qwen/Qwen2.5-32B-Instruct-AWQ"
+            engine_args = AsyncEngineArgs(
+                model=fallback_model,
+                tensor_parallel_size=1,
+                max_model_len=8192,
+                enforce_eager=True,
+            )
+            self.engine = AsyncLLMEngine.from_engine_args(engine_args)
+            self.tokenizer = AutoTokenizer.from_pretrained(fallback_model)
+            self.active_model = fallback_model
 
     @modal.method()
     async def generate(self, system_message: str = "", user_message: str = "", messages: list = None, temperature: float = 0.7) -> str:
@@ -201,6 +245,96 @@ class QwenLargeModel:
             final_output = request_output
             
         return final_output.outputs[0].text.strip()
+
+
+@app.cls(gpu="A10G", image=vlm_image, timeout=1200, min_containers=0, scaledown_window=30)
+@modal.concurrent(max_inputs=10)
+class QwenVLModel:
+    """
+    Handles Vision-Language models: Qwen/Qwen2.5-VL-7B-Instruct & Qwen/Qwen3.8-27B.
+    Performs visual action grounding, element detection, and coordinate prediction [x, y].
+    """
+    @modal.enter()
+    def setup(self):
+        import os
+        import torch
+        from transformers import AutoProcessor
+        try:
+            from transformers import Qwen2_5_VLForConditionalGeneration as VLMClass
+        except ImportError:
+            from transformers import AutoModelForVision2Seq as VLMClass
+
+        model_name = os.getenv("QWEN_VL_MODEL", "Qwen/Qwen2.5-VL-7B-Instruct")
+        print(f"[QwenVLModel] Loading vision-language foundation model: {model_name}")
+        self.processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+        self.model = VLMClass.from_pretrained(
+            model_name,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            trust_remote_code=True
+        )
+        self.model_name = model_name
+
+    @modal.method()
+    async def warmup(self) -> bool:
+        return True
+
+    @modal.method()
+    async def generate_vision(self, image_b64: str, prompt: str, system_message: str = "") -> dict:
+        import base64
+        import io
+        import json
+        from PIL import Image
+        import torch
+        from qwen_vl_utils import process_vision_info
+
+        if "," in image_b64:
+            image_b64 = image_b64.split(",", 1)[1]
+        img_bytes = base64.b64decode(image_b64)
+        image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+
+        messages = []
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "image", "image": image},
+                {"type": "text", "text": prompt}
+            ]
+        })
+
+        text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        image_inputs, video_inputs = process_vision_info(messages)
+        inputs = self.processor(
+            text=[text],
+            images=image_inputs,
+            videos=video_inputs,
+            padding=True,
+            return_tensors="pt"
+        ).to(self.model.device)
+
+        with torch.no_grad():
+            generated_ids = self.model.generate(**inputs, max_new_tokens=256)
+
+        generated_ids_trimmed = [
+            out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        ]
+        raw_output = self.processor.batch_decode(
+            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )[0].strip()
+
+        try:
+            cleaned = raw_output
+            if "```json" in cleaned:
+                cleaned = cleaned.split("```json", 1)[1].split("```", 1)[0].strip()
+            elif "```" in cleaned:
+                cleaned = cleaned.split("```", 1)[1].split("```", 1)[0].strip()
+            parsed = json.loads(cleaned)
+            return {"status": "success", "model": self.model_name, "raw": raw_output, "data": parsed}
+        except Exception:
+            return {"status": "success", "model": self.model_name, "raw": raw_output, "data": {"thought": raw_output}}
+
 
 def execute_past_paper_search(keyword: str, year: str) -> str:
     import requests
