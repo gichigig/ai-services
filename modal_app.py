@@ -2750,10 +2750,13 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 }
 
     if "account-switcher" in req.url:
+        user_id = str((req.form_values or {}).get("idNumber") or (req.form_values or {}).get("nationalId") or "").strip().lower()
+        user_first = str((req.form_values or {}).get("firstName") or "").strip().lower()
+        id_tokens = [t for t in [user_id, user_first] if t]
         for el in req.elements:
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
-            if "personal" in combined or "personal" in container or any(k in combined for k in ["42761734", "proceed to your personal account", "bildad"]):
+            if "personal" in combined or "personal" in container or "proceed to your personal account" in combined or (id_tokens and any(t in combined for t in id_tokens)):
                 print(f"[DecideAction HEURISTIC] Account Switcher personal account selection on element {el.id}")
                 return {
                     "status": "success",
@@ -3089,7 +3092,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
             container = (el.container or "").lower()
             if el.tag in ("input", "textarea") and ("building" in combined or "plot" in combined or "building" in container or "plot" in container):
-                bldg_val = (req.form_values or {}).get("buildingName") or "Upper Hill Chambers"
+                bldg_val = (req.form_values or {}).get("buildingName")
+                if not bldg_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_building_missing",
+                        "decision": {
+                            "thought": "Building name / Plot number is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "checkpoint_trigger": "user_input",
+                            "confidence": 0.99,
+                            "milestone": "Provide Building Name",
+                            "reason": "Missing required building or plot name for registered office address."
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Fill Building Name on element {el.id}: {bldg_val}")
                 return {
                     "status": "success",
@@ -3109,7 +3125,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
             container = (el.container or "").lower()
             if el.tag in ("input", "textarea") and ("street" in combined or "road" in combined or "street" in container or "road" in container):
-                street_val = (req.form_values or {}).get("streetRoad") or "Ngong Avenue"
+                street_val = (req.form_values or {}).get("streetRoad")
+                if not street_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_street_missing",
+                        "decision": {
+                            "thought": "Street / Road name is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "checkpoint_trigger": "user_input",
+                            "confidence": 0.99,
+                            "milestone": "Provide Street Name",
+                            "reason": "Missing required street or road name for registered office address."
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Fill Street/Road on element {el.id}: {street_val}")
                 return {
                     "status": "success",
@@ -3348,7 +3377,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("postal address" in combined or "postal address" in container):
-                    post_addr = (req.form_values or {}).get("proprietorPostalAddress") or (req.form_values or {}).get("postalAddress") or "15"
+                    post_addr = (req.form_values or {}).get("proprietorPostalAddress") or (req.form_values or {}).get("postalAddress") or (req.form_values or {}).get("businessPostalAddress")
+                    if not post_addr:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_postal_address_missing",
+                            "decision": {
+                                "thought": "Proprietor postal address is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide Postal Address",
+                                "reason": "Missing required postal address for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Fill Postal Address on element {el.id}: {post_addr}")
                     return {
                         "status": "success",
@@ -3369,7 +3411,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')}".lower()
                 container = (el.container or "").lower()
                 if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input")):
-                    raw_pc = (req.form_values or {}).get("proprietorPostalCode") or "10205 - MARAGUA"
+                    raw_pc = (req.form_values or {}).get("proprietorPostalCode") or (req.form_values or {}).get("postalCode") or (req.form_values or {}).get("businessPostalCode")
+                    if not raw_pc:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_postal_code_missing",
+                            "decision": {
+                                "thought": "Proprietor postal code is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide Postal Code",
+                                "reason": "Missing required postal code for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Select Postal Code '{raw_pc}' on element {el.id}")
                     return {
                         "status": "success",
@@ -3390,7 +3445,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("service address" in combined or "service address" in container):
-                    srv_addr = (req.form_values or {}).get("serviceAddress") or "15 maragua"
+                    srv_addr = (req.form_values or {}).get("serviceAddress") or (req.form_values or {}).get("proprietorPostalAddress") or (req.form_values or {}).get("streetRoad")
+                    if not srv_addr:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_service_address_missing",
+                            "decision": {
+                                "thought": "Service address is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide Service Address",
+                                "reason": "Missing required service address for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Fill Service Address on element {el.id}: {srv_addr}")
                     return {
                         "status": "success",
@@ -3411,7 +3479,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("occupation" in combined or "occupation" in container):
-                    occ_val = (req.form_values or {}).get("occupation") or "software engineer"
+                    occ_val = (req.form_values or {}).get("occupation")
+                    if not occ_val:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_occupation_missing",
+                            "decision": {
+                                "thought": "Occupation is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide Occupation",
+                                "reason": "Missing required occupation for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Fill Occupation on element {el.id}: {occ_val}")
                     return {
                         "status": "success",
@@ -3432,7 +3513,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')}".lower()
                 container = (el.container or "").lower()
                 if ("county" in combined or "county" in container) and ("choose" in combined or el.tag == "select"):
-                    c_val = (req.form_values or {}).get("proprietorCounty") or "Kiambu"
+                    c_val = (req.form_values or {}).get("proprietorCounty") or (req.form_values or {}).get("county")
+                    if not c_val:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_county_missing",
+                            "decision": {
+                                "thought": "County is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide County",
+                                "reason": "Missing required county for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Select County '{c_val}' on element {el.id}")
                     return {
                         "status": "success",
@@ -3453,7 +3547,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')}".lower()
                 container = (el.container or "").lower()
                 if ("district" in combined or "district" in container) and ("choose" in combined or el.tag == "select"):
-                    d_val = (req.form_values or {}).get("proprietorDistrict") or "Ruiru District"
+                    d_val = (req.form_values or {}).get("proprietorDistrict") or (req.form_values or {}).get("district")
+                    if not d_val:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_district_missing",
+                            "decision": {
+                                "thought": "District is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide District",
+                                "reason": "Missing required district for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Select District '{d_val}' on element {el.id}")
                     return {
                         "status": "success",
@@ -3474,7 +3581,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')}".lower()
                 container = (el.container or "").lower()
                 if ("locality" in combined or "locality" in container) and ("choose" in combined or el.tag == "select"):
-                    loc_val = (req.form_values or {}).get("proprietorLocality") or "Ruiru"
+                    loc_val = (req.form_values or {}).get("proprietorLocality") or (req.form_values or {}).get("locality")
+                    if not loc_val:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_locality_missing",
+                            "decision": {
+                                "thought": "Locality is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide Locality",
+                                "reason": "Missing required locality for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Select Locality '{loc_val}' on element {el.id}")
                     return {
                         "status": "success",
@@ -3495,7 +3615,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("building" in combined or "plot" in combined or "estate" in combined or "building" in container):
-                    bldg = (req.form_values or {}).get("proprietorBuilding") or "finance house"
+                    bldg = (req.form_values or {}).get("proprietorBuilding") or (req.form_values or {}).get("buildingName")
+                    if not bldg:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_bldg_missing",
+                            "decision": {
+                                "thought": "Building/Estate name is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide Building Name",
+                                "reason": "Missing required building or estate name for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Fill Building on element {el.id}: {bldg}")
                     return {
                         "status": "success",
@@ -3516,7 +3649,20 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("street" in combined or "road" in combined or "street" in container):
-                    street = (req.form_values or {}).get("proprietorStreet") or "kamiti road"
+                    street = (req.form_values or {}).get("proprietorStreet") or (req.form_values or {}).get("streetRoad")
+                    if not street:
+                        return {
+                            "status": "success",
+                            "source": "heuristic_proprietor_street_missing",
+                            "decision": {
+                                "thought": "Street/Road is missing from user parameters. Pausing for user input.",
+                                "action": "wait",
+                                "checkpoint_trigger": "user_input",
+                                "confidence": 0.99,
+                                "milestone": "Provide Street Name",
+                                "reason": "Missing required street or road for proprietor."
+                            }
+                        }
                     print(f"[DecideAction HEURISTIC] Fill Street on element {el.id}: {street}")
                     return {
                         "status": "success",
