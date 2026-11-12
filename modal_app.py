@@ -1625,7 +1625,22 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input") or el.role == "combobox"):
                 raw_pc = (req.form_values or {}).get("postalCode") or (req.form_values or {}).get("businessPostalCode")
                 if not raw_pc:
-                    raw_pc = "00100 - G.P.O NAIROBI"
+                    print(f"[DecideAction PLAYBOOK] Step 10 missing applicant postal code parameter!")
+                    return {
+                        "status": "success",
+                        "source": "playbook_missing_applicant_postal_code",
+                        "decision": {
+                            "thought": "Applicant postal code is missing from user intake. Halting to request postal code.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Postal Code",
+                            "confidence": 1.0,
+                            "reason": "Please provide your postal code (e.g. 00100 - G.P.O NAIROBI) to proceed.",
+                            "missing_field": "postalCode"
+                        }
+                    }
                 pc_val = "00100 - G.P.O NAIROBI" if "00100" in str(raw_pc) else str(raw_pc)
                 curr_val = (getattr(el, "value", None) or "").strip()
                 if not curr_val or curr_val.lower() == "choose":
@@ -1669,7 +1684,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("nature of business" in combined or "nature of business" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
-                nature_val = (req.form_values or {}).get("natureOfBusiness", "OTHER")
+                nature_val = (req.form_values or {}).get("natureOfBusiness")
+                if not nature_val:
+                    print(f"[DecideAction PLAYBOOK] Step 11 missing nature of business parameter!")
+                    return {
+                        "status": "success",
+                        "source": "playbook_missing_nature_of_business",
+                        "decision": {
+                            "thought": "Nature of business category is missing from user intake. Halting to request category.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Nature of Business",
+                            "confidence": 1.0,
+                            "reason": "Please select your Nature of Business category (e.g. OTHER, AGROVET, ACCOUNTANTS) to proceed.",
+                            "missing_field": "natureOfBusiness"
+                        }
+                    }
                 curr_val = (getattr(el, "value", None) or "").strip()
                 if not curr_val or curr_val.lower() == "choose":
                     print(f"[DecideAction PLAYBOOK] Step 11: Select Nature of Business '{nature_val}' on element {el.id}")
@@ -1692,7 +1724,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
             container = (el.container or "").lower()
             if el.tag in ("textarea", "input") and ("describe" in combined or "describe" in container or "nature" in combined):
-                desc_val = (req.form_values or {}).get("businessDescription") or (req.form_values or {}).get("natureDescription") or "General supplies, retail trading, and related commercial services."
+                desc_val = (req.form_values or {}).get("businessDescription") or (req.form_values or {}).get("natureDescription")
+                if not desc_val:
+                    print(f"[DecideAction PLAYBOOK] Step 11 missing business description parameter!")
+                    return {
+                        "status": "success",
+                        "source": "playbook_missing_business_description",
+                        "decision": {
+                            "thought": "Detailed description of business activities is missing from user intake. Halting to request description.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Business Description",
+                            "confidence": 1.0,
+                            "reason": "Please provide a brief description of the commercial activities and goods your business will deal in.",
+                            "missing_field": "businessDescription"
+                        }
+                    }
                 curr_val = (getattr(el, "value", None) or "").strip()
                 if not curr_val:
                     print(f"[DecideAction PLAYBOOK] Step 11: Fill business description on element {el.id}: {desc_val}")
@@ -1735,7 +1784,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("county" in combined or "county" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
-                c_val = (req.form_values or {}).get("county", "NAIROBI")
+                c_val = (req.form_values or {}).get("county")
+                if not c_val:
+                    print(f"[DecideAction PLAYBOOK] Step 12 missing county parameter!")
+                    return {
+                        "status": "success",
+                        "source": "playbook_missing_county",
+                        "decision": {
+                            "thought": "Registered office county is missing from user intake. Halting to request county.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting County",
+                            "confidence": 1.0,
+                            "reason": "Please provide the county where your business office is situated (e.g. NAIROBI, MOMBASA, KISUMU).",
+                            "missing_field": "county"
+                        }
+                    }
                 curr_val = (getattr(el, "value", None) or "").strip()
                 if not curr_val or curr_val.lower() == "choose":
                     print(f"[DecideAction PLAYBOOK] Step 12: Select County '{c_val}' on element {el.id}")
@@ -1758,7 +1824,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("district" in combined or "district" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
-                d_val = (req.form_values or {}).get("district", "NAIROBI CENTRAL")
+                d_val = (req.form_values or {}).get("district")
+                if not d_val:
+                    print(f"[DecideAction PLAYBOOK] Step 12 missing district / sub-county parameter!")
+                    return {
+                        "status": "success",
+                        "source": "playbook_missing_district",
+                        "decision": {
+                            "thought": "Registered office district/sub-county is missing from user intake. Halting to request district.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting District / Sub-County",
+                            "confidence": 1.0,
+                            "reason": "Please provide the sub-county / district where your business is located.",
+                            "missing_field": "district"
+                        }
+                    }
                 curr_val = (getattr(el, "value", None) or "").strip()
                 if not curr_val or curr_val.lower() == "choose":
                     print(f"[DecideAction PLAYBOOK] Step 12: Select District '{d_val}' on element {el.id}")
@@ -1781,7 +1864,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("locality" in combined or "locality" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
-                loc_val = (req.form_values or {}).get("locality", "CENTRAL BUSINESS DISTRICT")
+                loc_val = (req.form_values or {}).get("locality")
+                if not loc_val:
+                    print(f"[DecideAction PLAYBOOK] Step 12 missing locality parameter!")
+                    return {
+                        "status": "success",
+                        "source": "playbook_missing_locality",
+                        "decision": {
+                            "thought": "Registered office locality/town is missing from user intake. Halting to request locality.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Locality / Town",
+                            "confidence": 1.0,
+                            "reason": "Please provide the locality / town of your business premises.",
+                            "missing_field": "locality"
+                        }
+                    }
                 curr_val = (getattr(el, "value", None) or "").strip()
                 if not curr_val or curr_val.lower() == "choose":
                     print(f"[DecideAction PLAYBOOK] Step 12: Select Locality '{loc_val}' on element {el.id}")
@@ -1921,7 +2021,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input") or el.role == "combobox"):
-                raw_pc = (req.form_values or {}).get("businessPostalCode") or (req.form_values or {}).get("postalCode") or "00100 - G.P.O NAIROBI"
+                raw_pc = (req.form_values or {}).get("businessPostalCode") or (req.form_values or {}).get("postalCode")
+                if not raw_pc:
+                    print(f"[DecideAction PLAYBOOK] Step 12 missing business postal code parameter!")
+                    return {
+                        "status": "success",
+                        "source": "playbook_missing_business_postal_code",
+                        "decision": {
+                            "thought": "Business postal code is missing from user intake. Halting to request postal code.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Business Postal Code",
+                            "confidence": 1.0,
+                            "reason": "Please provide your business postal code (e.g. 00100 - G.P.O NAIROBI) for the registered office.",
+                            "missing_field": "businessPostalCode"
+                        }
+                    }
                 pc_val = "00100 - G.P.O NAIROBI" if "00100" in str(raw_pc) else str(raw_pc)
                 curr_val = (getattr(el, "value", None) or "").strip()
                 if not curr_val or curr_val.lower() == "choose":
@@ -2174,7 +2291,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("postal address" in combined or "postal address" in container):
-                    post_addr = (req.form_values or {}).get("proprietorPostalAddress") or (req.form_values or {}).get("postalAddress") or (req.form_values or {}).get("businessPostalAddress") or "P. O. Box 100"
+                    post_addr = (req.form_values or {}).get("proprietorPostalAddress") or (req.form_values or {}).get("postalAddress") or (req.form_values or {}).get("businessPostalAddress")
+                    if not post_addr:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor postal address parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_proprietor_postal_address",
+                            "decision": {
+                                "thought": "Proprietor postal address is missing from user intake. Halting to request address.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Proprietor Postal Address",
+                                "confidence": 1.0,
+                                "reason": "Please provide the postal address for the proprietor (e.g. P. O. Box ...).",
+                                "missing_field": "proprietorPostalAddress"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val:
                         print(f"[DecideAction PLAYBOOK] Step 13: Fill Postal Address on element {el.id}: {post_addr}")
@@ -2197,7 +2331,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')}".lower()
                 container = (el.container or "").lower()
                 if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input") or el.role == "combobox"):
-                    raw_pc = (req.form_values or {}).get("proprietorPostalCode") or (req.form_values or {}).get("businessPostalCode") or (req.form_values or {}).get("postalCode") or "00100 - G.P.O NAIROBI"
+                    raw_pc = (req.form_values or {}).get("proprietorPostalCode") or (req.form_values or {}).get("businessPostalCode") or (req.form_values or {}).get("postalCode")
+                    if not raw_pc:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor postal code parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_proprietor_postal_code",
+                            "decision": {
+                                "thought": "Proprietor postal code is missing from user intake. Halting to request postal code.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Proprietor Postal Code",
+                                "confidence": 1.0,
+                                "reason": "Please provide the proprietor postal code (e.g. 00100 - G.P.O NAIROBI).",
+                                "missing_field": "proprietorPostalCode"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val or curr_val.lower() == "choose":
                         print(f"[DecideAction PLAYBOOK] Step 13: Select Postal Code '{raw_pc}' on element {el.id}")
@@ -2220,7 +2371,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("service address" in combined or "service address" in container):
-                    srv_addr = (req.form_values or {}).get("serviceAddress") or (req.form_values or {}).get("proprietorPostalAddress") or (req.form_values or {}).get("postalAddress") or "Nairobi"
+                    srv_addr = (req.form_values or {}).get("serviceAddress") or (req.form_values or {}).get("proprietorPostalAddress") or (req.form_values or {}).get("postalAddress") or (req.form_values or {}).get("businessPostalAddress")
+                    if not srv_addr:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor service address parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_service_address",
+                            "decision": {
+                                "thought": "Service address for legal notifications is missing from user intake. Halting to request service address.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Service Address",
+                                "confidence": 1.0,
+                                "reason": "Please provide a service address for statutory service of legal notices.",
+                                "missing_field": "serviceAddress"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val:
                         print(f"[DecideAction PLAYBOOK] Step 13: Fill Service Address on element {el.id}: {srv_addr}")
@@ -2243,7 +2411,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("occupation" in combined or "occupation" in container):
-                    occ_val = (req.form_values or {}).get("occupation") or "Business Owner"
+                    occ_val = (req.form_values or {}).get("occupation")
+                    if not occ_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor occupation parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_occupation",
+                            "decision": {
+                                "thought": "Proprietor occupation is missing from user intake. Halting to request occupation.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Proprietor Occupation",
+                                "confidence": 1.0,
+                                "reason": "Please provide your profession or occupation (e.g. Consultant, Trader, Engineer).",
+                                "missing_field": "occupation"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val:
                         print(f"[DecideAction PLAYBOOK] Step 13: Fill Occupation on element {el.id}: {occ_val}")
@@ -2266,7 +2451,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')}".lower()
                 container = (el.container or "").lower()
                 if ("county" in combined or "county" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
-                    c_val = (req.form_values or {}).get("proprietorCounty") or (req.form_values or {}).get("county") or "NAIROBI"
+                    c_val = (req.form_values or {}).get("proprietorCounty") or (req.form_values or {}).get("county")
+                    if not c_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor residential county parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_proprietor_county",
+                            "decision": {
+                                "thought": "Proprietor residential county is missing from user intake. Halting to request county.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Proprietor County",
+                                "confidence": 1.0,
+                                "reason": "Please provide the proprietor residential county.",
+                                "missing_field": "proprietorCounty"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val or curr_val.lower() == "choose":
                         print(f"[DecideAction PLAYBOOK] Step 13: Select County '{c_val}' on element {el.id}")
@@ -2289,7 +2491,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')}".lower()
                 container = (el.container or "").lower()
                 if ("district" in combined or "district" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
-                    d_val = (req.form_values or {}).get("proprietorDistrict") or (req.form_values or {}).get("district") or "NAIROBI CENTRAL"
+                    d_val = (req.form_values or {}).get("proprietorDistrict") or (req.form_values or {}).get("district")
+                    if not d_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor district parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_proprietor_district",
+                            "decision": {
+                                "thought": "Proprietor district / sub-county is missing from user intake. Halting to request district.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Proprietor District",
+                                "confidence": 1.0,
+                                "reason": "Please provide the proprietor sub-county / district.",
+                                "missing_field": "proprietorDistrict"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val or curr_val.lower() == "choose":
                         print(f"[DecideAction PLAYBOOK] Step 13: Select District '{d_val}' on element {el.id}")
@@ -2312,7 +2531,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')}".lower()
                 container = (el.container or "").lower()
                 if ("locality" in combined or "locality" in container) and ("choose" in combined or el.tag == "select" or el.role == "combobox"):
-                    loc_val = (req.form_values or {}).get("proprietorLocality") or (req.form_values or {}).get("locality") or "CENTRAL BUSINESS DISTRICT"
+                    loc_val = (req.form_values or {}).get("proprietorLocality") or (req.form_values or {}).get("locality")
+                    if not loc_val:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor locality parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_proprietor_locality",
+                            "decision": {
+                                "thought": "Proprietor residential locality / town is missing from user intake. Halting to request locality.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Proprietor Locality",
+                                "confidence": 1.0,
+                                "reason": "Please provide the proprietor locality / town / estate.",
+                                "missing_field": "proprietorLocality"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val or curr_val.lower() == "choose":
                         print(f"[DecideAction PLAYBOOK] Step 13: Select Locality '{loc_val}' on element {el.id}")
@@ -2335,7 +2571,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("building" in combined or "plot" in combined or "estate" in combined or "building" in container):
-                    bldg = (req.form_values or {}).get("proprietorBuilding") or (req.form_values or {}).get("buildingName") or "Plot 1"
+                    bldg = (req.form_values or {}).get("proprietorBuilding") or (req.form_values or {}).get("buildingName") or (req.form_values or {}).get("plotNumber")
+                    if not bldg:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor residential building / estate parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_proprietor_building",
+                            "decision": {
+                                "thought": "Proprietor building / plot / estate name is missing from user intake. Halting to request building info.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Proprietor Building",
+                                "confidence": 1.0,
+                                "reason": "Please provide the building, plot, or estate name for the proprietor residential address.",
+                                "missing_field": "proprietorBuilding"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val:
                         print(f"[DecideAction PLAYBOOK] Step 13: Fill Building on element {el.id}: {bldg}")
@@ -2358,7 +2611,24 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
                 combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
                 container = (el.container or "").lower()
                 if el.tag in ("input", "textarea") and ("street" in combined or "road" in combined or "street" in container):
-                    street = (req.form_values or {}).get("proprietorStreet") or (req.form_values or {}).get("streetRoad") or "Main Road"
+                    street = (req.form_values or {}).get("proprietorStreet") or (req.form_values or {}).get("streetRoad")
+                    if not street:
+                        print(f"[DecideAction PLAYBOOK] Step 13 missing proprietor residential street parameter!")
+                        return {
+                            "status": "success",
+                            "source": "playbook_missing_proprietor_street",
+                            "decision": {
+                                "thought": "Proprietor street / road name is missing from user intake. Halting to request street info.",
+                                "action": "wait",
+                                "is_transient": False,
+                                "element_id": None,
+                                "handoff_trigger": "user_input",
+                                "milestone": "Awaiting Proprietor Street",
+                                "confidence": 1.0,
+                                "reason": "Please provide the street or road name for the proprietor residential address.",
+                                "missing_field": "proprietorStreet"
+                            }
+                        }
                     curr_val = (getattr(el, "value", None) or "").strip()
                     if not curr_val:
                         print(f"[DecideAction PLAYBOOK] Step 13: Fill Street on element {el.id}: {street}")
@@ -2913,7 +3183,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
             container = (el.container or "").lower()
             if el.tag in ("input", "textarea") and ("address" in combined or "address" in container):
-                addr_val = (req.form_values or {}).get("postalAddress") or (req.form_values or {}).get("address") or "P.O. Box 100-00100 Nairobi"
+                addr_val = (req.form_values or {}).get("postalAddress") or (req.form_values or {}).get("address")
+                if not addr_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_applicant_address_missing",
+                        "decision": {
+                            "thought": "Applicant postal address is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Postal Address",
+                            "confidence": 1.0,
+                            "reason": "Please provide your applicant postal address (e.g. P.O. Box ...) to proceed.",
+                            "missing_field": "postalAddress"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Fill address on element {el.id}: {addr_val}")
                 return {
                     "status": "success",
@@ -2933,7 +3219,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input")):
-                raw_pc = (req.form_values or {}).get("postalCode", "00100 - G.P.O NAIROBI")
+                raw_pc = (req.form_values or {}).get("postalCode") or (req.form_values or {}).get("businessPostalCode")
+                if not raw_pc:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_applicant_postal_code_missing",
+                        "decision": {
+                            "thought": "Applicant postal code is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Postal Code",
+                            "confidence": 1.0,
+                            "reason": "Please provide your postal code (e.g. 00100 - G.P.O NAIROBI) to proceed.",
+                            "missing_field": "postalCode"
+                        }
+                    }
                 pc_val = "00100 - G.P.O NAIROBI" if "00100" in str(raw_pc) else str(raw_pc)
                 print(f"[DecideAction HEURISTIC] Select postal code '{pc_val}' on element {el.id}")
                 return {
@@ -2973,7 +3275,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("nature of business" in combined or "nature of business" in container) and ("choose" in combined or el.tag == "select"):
-                nature_val = (req.form_values or {}).get("natureOfBusiness", "OTHER")
+                nature_val = (req.form_values or {}).get("natureOfBusiness")
+                if not nature_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_nature_of_business_missing",
+                        "decision": {
+                            "thought": "Nature of business category is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Nature of Business",
+                            "confidence": 1.0,
+                            "reason": "Please select your Nature of Business category to proceed.",
+                            "missing_field": "natureOfBusiness"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Select Nature of Business '{nature_val}' on element {el.id}")
                 return {
                     "status": "success",
@@ -2993,7 +3311,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
             container = (el.container or "").lower()
             if el.tag in ("textarea", "input") and ("describe" in combined or "describe" in container or "nature" in combined):
-                desc_val = (req.form_values or {}).get("businessDescription") or (req.form_values or {}).get("natureDescription") or "General supplies, retail trading, and related commercial services."
+                desc_val = (req.form_values or {}).get("businessDescription") or (req.form_values or {}).get("natureDescription")
+                if not desc_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_nature_of_business_desc_missing",
+                        "decision": {
+                            "thought": "Business activity description is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Business Description",
+                            "confidence": 1.0,
+                            "reason": "Please provide a description of the nature of your business.",
+                            "missing_field": "businessDescription"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Fill business description on element {el.id}: {desc_val}")
                 return {
                     "status": "success",
@@ -3032,7 +3366,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("county" in combined or "county" in container) and ("choose" in combined or el.tag == "select"):
-                c_val = (req.form_values or {}).get("county", "NAIROBI")
+                c_val = (req.form_values or {}).get("county")
+                if not c_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_county_missing",
+                        "decision": {
+                            "thought": "Registered office county is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting County",
+                            "confidence": 1.0,
+                            "reason": "Please provide the county of your registered office.",
+                            "missing_field": "county"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Select County '{c_val}' on element {el.id}")
                 return {
                     "status": "success",
@@ -3052,7 +3402,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("district" in combined or "district" in container) and ("choose" in combined or el.tag == "select"):
-                d_val = (req.form_values or {}).get("district", "NAIROBI CENTRAL")
+                d_val = (req.form_values or {}).get("district")
+                if not d_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_district_missing",
+                        "decision": {
+                            "thought": "Registered office sub-county/district is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting District",
+                            "confidence": 1.0,
+                            "reason": "Please provide the sub-county / district of your registered office.",
+                            "missing_field": "district"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Select District '{d_val}' on element {el.id}")
                 return {
                     "status": "success",
@@ -3072,7 +3438,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("locality" in combined or "locality" in container) and ("choose" in combined or el.tag == "select"):
-                loc_val = (req.form_values or {}).get("locality", "CENTRAL BUSINESS DISTRICT")
+                loc_val = (req.form_values or {}).get("locality")
+                if not loc_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_locality_missing",
+                        "decision": {
+                            "thought": "Registered office locality/town is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Locality",
+                            "confidence": 1.0,
+                            "reason": "Please provide the locality or town of your registered office premises.",
+                            "missing_field": "locality"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Select Locality '{loc_val}' on element {el.id}")
                 return {
                     "status": "success",
@@ -3158,7 +3540,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
             container = (el.container or "").lower()
             if el.tag in ("input", "textarea") and ("postal address" in combined or "postal address" in container):
-                p_addr = (req.form_values or {}).get("businessPostalAddress") or (req.form_values or {}).get("postalAddress") or "P. O. Box 30404"
+                p_addr = (req.form_values or {}).get("businessPostalAddress") or (req.form_values or {}).get("postalAddress")
+                if not p_addr:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_postal_address_missing",
+                        "decision": {
+                            "thought": "Business postal address is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Business Postal Address",
+                            "confidence": 1.0,
+                            "reason": "Please provide your business postal address (e.g. P. O. Box ...) for the registered office.",
+                            "missing_field": "businessPostalAddress"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Fill Postal Address on element {el.id}: {p_addr}")
                 return {
                     "status": "success",
@@ -3178,7 +3576,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')}".lower()
             container = (el.container or "").lower()
             if ("postal code" in combined or "postal code" in container) and ("choose" in combined or el.tag in ("select", "input")):
-                raw_pc = (req.form_values or {}).get("businessPostalCode") or (req.form_values or {}).get("postalCode", "00100 - G.P.O NAIROBI")
+                raw_pc = (req.form_values or {}).get("businessPostalCode") or (req.form_values or {}).get("postalCode")
+                if not raw_pc:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_postal_code_missing",
+                        "decision": {
+                            "thought": "Business postal code is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Business Postal Code",
+                            "confidence": 1.0,
+                            "reason": "Please provide your business postal code (e.g. 00100 - G.P.O NAIROBI) for the registered office.",
+                            "missing_field": "businessPostalCode"
+                        }
+                    }
                 pc_val = "00100 - G.P.O NAIROBI" if "00100" in str(raw_pc) else str(raw_pc)
                 print(f"[DecideAction HEURISTIC] Select postal code '{pc_val}' on element {el.id}")
                 return {
@@ -3199,7 +3613,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
             container = (el.container or "").lower()
             if el.tag in ("input", "textarea") and ("mobile" in combined or "phone" in combined or "mobile" in container or "phone" in container):
-                phone_val = (req.form_values or {}).get("businessPhone") or (req.form_values or {}).get("phoneNumber") or "+254700000000"
+                phone_val = (req.form_values or {}).get("businessPhone") or (req.form_values or {}).get("phoneNumber") or (req.form_values or {}).get("phone")
+                if not phone_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_mobile_missing",
+                        "decision": {
+                            "thought": "Business phone number is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Business Phone",
+                            "confidence": 1.0,
+                            "reason": "Please provide your business mobile or phone number for the registered office.",
+                            "missing_field": "businessPhone"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Fill Mobile Number on element {el.id}: {phone_val}")
                 return {
                     "status": "success",
@@ -3219,7 +3649,23 @@ async def ecitizen_decide_action_endpoint(req: EcitizenActionRequest):
             combined = f"{(el.text or '')} {(el.name or '')} {(el.placeholder or '')}".lower()
             container = (el.container or "").lower()
             if el.tag in ("input", "textarea") and ("email" in combined or "email" in container):
-                email_val = (req.form_values or {}).get("businessEmail") or (req.form_values or {}).get("email") or "info@business.co.ke"
+                email_val = (req.form_values or {}).get("businessEmail") or (req.form_values or {}).get("email")
+                if not email_val:
+                    return {
+                        "status": "success",
+                        "source": "heuristic_address_email_missing",
+                        "decision": {
+                            "thought": "Business email address is missing from user parameters. Pausing for user input.",
+                            "action": "wait",
+                            "is_transient": False,
+                            "element_id": None,
+                            "handoff_trigger": "user_input",
+                            "milestone": "Awaiting Business Email",
+                            "confidence": 1.0,
+                            "reason": "Please provide your business email address for the registered office.",
+                            "missing_field": "businessEmail"
+                        }
+                    }
                 print(f"[DecideAction HEURISTIC] Fill Email on element {el.id}: {email_val}")
                 return {
                     "status": "success",
