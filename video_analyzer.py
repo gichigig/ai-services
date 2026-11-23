@@ -674,13 +674,16 @@ def analyze_video_frames(video_url: str):
                     if isinstance(p, dict):
                         cls = str(p.get('class') or p.get('label') or '').upper()
                         score = float(p.get('score', 0.0))
-                        # Target exposed nudity classes
-                        if not cls or "EXPOSED" in cls or "GENITALIA" in cls or "ANUS" in cls or "BUTTOCKS" in cls or "BREAST" in cls or "NUDE" in cls:
-                            if score > max_nsfw_score:
-                                max_nsfw_score = score
+                        # Keen guideline check: strictly exposed explicit nudity, ignore covered/athletic/dance
+                        is_explicit = bool(cls) and ("EXPOSED" in cls or "GENITALIA" in cls or "ANUS" in cls) and "COVERED" not in cls
+                        if is_explicit and score > max_nsfw_score:
+                            max_nsfw_score = score
                     elif hasattr(p, 'score'):
-                        if float(p.score) > max_nsfw_score:
-                            max_nsfw_score = float(p.score)
+                        cls = str(getattr(p, 'class', '') or getattr(p, 'label', '')).upper()
+                        score = float(p.score)
+                        is_explicit = bool(cls) and ("EXPOSED" in cls or "GENITALIA" in cls or "ANUS" in cls) and "COVERED" not in cls
+                        if is_explicit and score > max_nsfw_score:
+                            max_nsfw_score = score
             except Exception as e:
                 pass
 
@@ -814,8 +817,8 @@ def analyze_video_frames(video_url: str):
     if has_faces and "face-centric" not in tags:
         tags.append("face-centric")
 
-    # NSFW
-    is_nsfw = max_nsfw_score > 0.6
+    # NSFW - Keen evaluation: require score >= 0.82 on explicit exposed classes to avoid false positives
+    is_nsfw = max_nsfw_score >= 0.82
 
     if len(tags) < 2:
         tags.append("trending")
@@ -871,9 +874,10 @@ def analyze_video_frames(video_url: str):
 
 def check_video_nsfw(video_path: str, max_frames: int = 20) -> tuple[bool, float]:
     """
-    Ultra-fast NSFW pre-check on up to max_frames sampled evenly across the video.
+    Ultra-keen NSFW guideline check on up to max_frames sampled evenly across the video.
     Returns (is_nsfw, max_score).
-    Exits early as soon as any frame scores > 0.6 to minimize latency (< 0.5s).
+    Distinguishes covered athletic, dance, and swimwear from genuinely explicit violations.
+    Requires score >= 0.82 across multiple frames (or >= 0.92 single frame) to avoid false positives.
     """
     if not os.path.exists(video_path) and video_path.startswith("/"):
         video_path = f"https://school.ishinadwelly.com{video_path}"
@@ -889,6 +893,7 @@ def check_video_nsfw(video_path: str, max_frames: int = 20) -> tuple[bool, float
 
     step = max(1, total_frames // max_frames)
     max_score = 0.0
+    explicit_hits = 0
 
     try:
         for i in range(max_frames):
@@ -903,22 +908,32 @@ def check_video_nsfw(video_path: str, max_frames: int = 20) -> tuple[bool, float
                     if isinstance(p, dict):
                         cls = str(p.get('class') or p.get('label') or '').upper()
                         score = float(p.get('score', 0.0))
-                        # Explicit/exposed nudity classes
-                        if not cls or "EXPOSED" in cls or "GENITALIA" in cls or "ANUS" in cls or "BUTTOCKS" in cls or "BREAST" in cls or "NUDE" in cls:
+                        # Only true exposed violations, strictly ignoring covered or innocent areas
+                        is_explicit = bool(cls) and ("EXPOSED" in cls or "GENITALIA" in cls or "ANUS" in cls) and "COVERED" not in cls
+                        if is_explicit:
                             if score > max_score:
                                 max_score = score
+                            if score >= 0.82:
+                                explicit_hits += 1
                     elif hasattr(p, 'score'):
-                        if float(p.score) > max_score:
-                            max_score = float(p.score)
-                # Early exit if adult content confirmed
-                if max_score > 0.6:
-                    print(f"check_video_nsfw: Adult content detected early on frame {frame_idx} (Score: {max_score:.2f})")
+                        cls = str(getattr(p, 'class', '') or getattr(p, 'label', '')).upper()
+                        score = float(p.score)
+                        is_explicit = bool(cls) and ("EXPOSED" in cls or "GENITALIA" in cls or "ANUS" in cls) and "COVERED" not in cls
+                        if is_explicit:
+                            if score > max_score:
+                                max_score = score
+                            if score >= 0.82:
+                                explicit_hits += 1
+                # Exit early only if multiple high-confidence frames or extreme single frame
+                if explicit_hits >= 2 or max_score >= 0.92:
+                    print(f"check_video_nsfw: Explicit adult content confirmed on frame {frame_idx} (Score: {max_score:.2f}, Hits: {explicit_hits})")
                     break
-            except Exception as e:
+            except Exception:
                 pass
     finally:
         cap.release()
 
-    is_nsfw = max_score > 0.6
-    print(f"check_video_nsfw result: is_nsfw={is_nsfw}, score={max_score:.2f}")
+    # Keen threshold: require genuine high confidence and persistence
+    is_nsfw = (max_score >= 0.92) or (max_score >= 0.82 and explicit_hits >= 2)
+    print(f"check_video_nsfw result: is_nsfw={is_nsfw}, score={max_score:.2f}, explicit_hits={explicit_hits}")
     return is_nsfw, round(max_score, 3)
