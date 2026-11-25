@@ -49,6 +49,7 @@ class QuestionRequest(BaseModel):
     selected_model: Optional[str] = "small"
     use_reasoning: Optional[bool] = False
     attachments: Optional[List[ChatAttachment]] = None
+    canvas_context: Optional[dict] = None
 
 class TopicRequest(BaseModel):
     first_question: str
@@ -248,7 +249,8 @@ async def ask_question(request: QuestionRequest):
             user_memory=request.user_memory,
             selected_model=request.selected_model,
             use_reasoning=request.use_reasoning,
-            attachment_context=attachment_context
+            attachment_context=attachment_context,
+            canvas_context=request.canvas_context
         )
         
         return {
@@ -305,7 +307,8 @@ async def ask_question_stream_endpoint(request: QuestionRequest):
                 user_memory=request.user_memory,
                 selected_model=request.selected_model,
                 use_reasoning=request.use_reasoning,
-                attachment_context=attachment_context
+                attachment_context=attachment_context,
+                canvas_context=request.canvas_context
             ):
                 yield chunk
         except Exception as e:
