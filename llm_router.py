@@ -908,6 +908,17 @@ def execute_save_memory(student_id: str, tool_call: dict) -> str:
     except Exception as e:
         return f"Memory update error: {str(e)}"
 
+def should_force_canvas(question: str) -> bool:
+    if not question:
+        return False
+    q = question.lower()
+    keywords = [
+        "canvas", "in canvas", "canvas form", "canvas mode", "cv", "curriculum vitae",
+        "resume", "cover letter", "write an essay", "write a draft", "create a draft",
+        "draft a", "generate notes", "study guide", "assignment solution", "lab report"
+    ]
+    return any(k in q for k in keywords)
+
 async def ask_qwen(question: str, context: str, student_id: str = None, history: list = None, user_memory: dict = None, selected_model: str = "small", use_reasoning: bool = False, attachment_context: str = "", canvas_context: dict = None) -> str:
     """
     Main entry point function.
@@ -997,12 +1008,14 @@ When the user asks to generate, export, compile, or download your answer, previo
 {"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Operating Systems Concurrency>", "content": "<complete markdown text of the notes or response to compile into the PDF>"}
 CRITICAL: Do NOT tell the student that you cannot generate PDFs. You have direct access to this tool to generate downloadable PDFs!
 
-10. CANVAS WORKSPACE (LONG-FORM WRITING, ESSAYS, STUDY GUIDES & CODE):
-When the student asks to write, draft, generate, or create long-form content (e.g. an essay, comprehensive study notes, revision sheet, lab report, chapter summary, detailed assignment answer, or multi-function code script), OR explicitly says "open canvas", "in canvas mode", "write a draft", wrap the document in a canvas block:
+10. CANVAS WORKSPACE (MANDATORY FOR CVs, RESUMES, ESSAYS, STUDY GUIDES & CODE):
+When the student asks to write, draft, generate, or create a CV, resume, cover letter, essay, study notes, revision sheet, lab report, chapter summary, detailed assignment answer, or multi-function code script, OR whenever the user mentions "canvas", "in canvas form", "so i can edit", or "write a draft":
+YOU MUST ENCLOSE THE ENTIRE DRAFTED DOCUMENT INSIDE:
 [CANVAS_DOCUMENT title="<Clear Descriptive Title in Title Case>" language="markdown|python|javascript|sql|html|kotlin|text"]
-<formatted document content here>
+<formatted complete document content here>
 [/CANVAS_DOCUMENT]
-Briefly introduce the document before or after the block (e.g. "I've created your study guide in the Canvas workspace on the right so you can edit sections, copy text, or ask me to continue.").
+CRITICAL MANDATORY INSTRUCTION:
+Do NOT output the document body outside of the [CANVAS_DOCUMENT] tags! If you write it as plain chat text without the tags, the interactive Canvas Workspace editor WILL NOT OPEN and the user will not be able to edit or copy it. You must always wrap the drafted content inside [CANVAS_DOCUMENT ...] tags. You can include a short 1-line friendly note before or after the tag (e.g. "I've drafted your CV in the Canvas workspace on the right so you can edit any fields, copy the text, or export to PDF.").
 """
 
     context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
@@ -1026,7 +1039,11 @@ Briefly introduce the document before or after the block (e.g. "I've created you
         if c_content:
             canvas_str = f"ACTIVE CANVAS WORKSPACE (CURRENT DOCUMENT BEING EDITED BY USER):\nTitle: {c_title}\nLanguage: {c_lang}\n\n<ACTIVE_CANVAS>\n{c_content}\n</ACTIVE_CANVAS>\n\nCRITICAL DIRECTIVE FOR CANVAS EDITING:\nThe student is viewing and directly editing this document in their interactive Canvas Editor.\nThe student has provided an instruction to edit, continue, expand, or adjust this document.\nYou MUST:\n1. Carefully analyze their requested change against the text inside <ACTIVE_CANVAS>.\n2. Apply the requested additions, edits, or continuations while keeping the rest of their document coherent and high-quality.\n3. Output the updated document wrapped in:\n[CANVAS_DOCUMENT title=\"{c_title}\" language=\"{c_lang}\"]\n<full updated document text here>\n[/CANVAS_DOCUMENT]\n4. Do NOT output unformatted snippets. Always output the full updated canvas document within the [CANVAS_DOCUMENT] tags so their editor updates seamlessly.\n\n"
 
-    final_user_turn = f"{context_str}{attachment_str}{canvas_str}{history_str}Student Question: {question}\n(Remember to keep conversational context from the conversation above and answer the question naturally without using any emojis.)"
+    canvas_force_prompt = ""
+    if not canvas_context and should_force_canvas(question):
+        canvas_force_prompt = "\n\nCRITICAL MANDATORY INSTRUCTION: The student specifically requested a canvas document / editable draft. You MUST wrap the entire drafted CV, resume, notes, essay, or code inside:\n[CANVAS_DOCUMENT title=\"<Title in Title Case>\" language=\"markdown\"]\n<complete drafted text>\n[/CANVAS_DOCUMENT]\nDO NOT write the draft outside [CANVAS_DOCUMENT], because omitting the tags will prevent the Canvas Workspace editor from opening for the user.\n"
+
+    final_user_turn = f"{context_str}{attachment_str}{canvas_str}{history_str}Student Question: {question}{canvas_force_prompt}\n(Remember to keep conversational context from the conversation above and answer the question naturally without using any emojis.)"
     user_message = final_user_turn
 
     SmallModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenSmallModel")
@@ -1187,6 +1204,11 @@ If the user is setting a memory or rule, output:
 
 If the student asks to generate or export a response as a PDF, output:
 {"tool": "generate_pdf_document", "title": "Operating Systems Concurrency", "content": "..."}
+
+If the student asks to write, draft, generate, or create a CV, resume, cover letter, essay, study notes, or code, or asks for canvas mode, you MUST enclose the document in:
+[CANVAS_DOCUMENT title="<Title in Title Case>" language="markdown|python|javascript|sql|html|kotlin|text"]
+<formatted complete document content here>
+[/CANVAS_DOCUMENT]
 """
         LargeModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenLargeModel")
         large_model = LargeModelCls()
@@ -1330,12 +1352,14 @@ When the user asks to generate, export, compile, or download your answer, previo
 {"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Operating Systems Concurrency>", "content": "<complete markdown text of the notes or response to compile into the PDF>"}
 CRITICAL: Do NOT tell the student that you cannot generate PDFs. You have direct access to this tool to generate downloadable PDFs!
 
-10. CANVAS WORKSPACE (LONG-FORM WRITING, ESSAYS, STUDY GUIDES & CODE):
-When the student asks to write, draft, generate, or create long-form content (e.g. an essay, comprehensive study notes, revision sheet, lab report, chapter summary, detailed assignment answer, or multi-function code script), OR explicitly says "open canvas", "in canvas mode", "write a draft", wrap the document in a canvas block:
+10. CANVAS WORKSPACE (MANDATORY FOR CVs, RESUMES, ESSAYS, STUDY GUIDES & CODE):
+When the student asks to write, draft, generate, or create a CV, resume, cover letter, essay, study notes, revision sheet, lab report, chapter summary, detailed assignment answer, or multi-function code script, OR whenever the user mentions "canvas", "in canvas form", "so i can edit", or "write a draft":
+YOU MUST ENCLOSE THE ENTIRE DRAFTED DOCUMENT INSIDE:
 [CANVAS_DOCUMENT title="<Clear Descriptive Title in Title Case>" language="markdown|python|javascript|sql|html|kotlin|text"]
-<formatted document content here>
+<formatted complete document content here>
 [/CANVAS_DOCUMENT]
-Briefly introduce the document before or after the block (e.g. "I've created your study guide in the Canvas workspace on the right so you can edit sections, copy text, or ask me to continue.").
+CRITICAL MANDATORY INSTRUCTION:
+Do NOT output the document body outside of the [CANVAS_DOCUMENT] tags! If you write it as plain chat text without the tags, the interactive Canvas Workspace editor WILL NOT OPEN and the user will not be able to edit or copy it. You must always wrap the drafted content inside [CANVAS_DOCUMENT ...] tags. You can include a short 1-line friendly note before or after the tag (e.g. "I've drafted your CV in the Canvas workspace on the right so you can edit any fields, copy the text, or export to PDF.").
 """
 
     context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
@@ -1359,7 +1383,11 @@ Briefly introduce the document before or after the block (e.g. "I've created you
         if c_content:
             canvas_str = f"ACTIVE CANVAS WORKSPACE (CURRENT DOCUMENT BEING EDITED BY USER):\nTitle: {c_title}\nLanguage: {c_lang}\n\n<ACTIVE_CANVAS>\n{c_content}\n</ACTIVE_CANVAS>\n\nCRITICAL DIRECTIVE FOR CANVAS EDITING:\nThe student is viewing and directly editing this document in their interactive Canvas Editor.\nThe student has provided an instruction to edit, continue, expand, or adjust this document.\nYou MUST:\n1. Carefully analyze their requested change against the text inside <ACTIVE_CANVAS>.\n2. Apply the requested additions, edits, or continuations while keeping the rest of their document coherent and high-quality.\n3. Output the updated document wrapped in:\n[CANVAS_DOCUMENT title=\"{c_title}\" language=\"{c_lang}\"]\n<full updated document text here>\n[/CANVAS_DOCUMENT]\n4. Do NOT output unformatted snippets. Always output the full updated canvas document within the [CANVAS_DOCUMENT] tags so their editor updates seamlessly.\n\n"
 
-    final_user_turn = f"{context_str}{attachment_str}{canvas_str}{history_str}Student Question: {question}\n(Remember to keep conversational context from the conversation above and answer the question naturally without using any emojis.)"
+    canvas_force_prompt = ""
+    if not canvas_context and should_force_canvas(question):
+        canvas_force_prompt = "\n\nCRITICAL MANDATORY INSTRUCTION: The student specifically requested a canvas document / editable draft. You MUST wrap the entire drafted CV, resume, notes, essay, or code inside:\n[CANVAS_DOCUMENT title=\"<Title in Title Case>\" language=\"markdown\"]\n<complete drafted text>\n[/CANVAS_DOCUMENT]\nDO NOT write the draft outside [CANVAS_DOCUMENT], because omitting the tags will prevent the Canvas Workspace editor from opening for the user.\n"
+
+    final_user_turn = f"{context_str}{attachment_str}{canvas_str}{history_str}Student Question: {question}{canvas_force_prompt}\n(Remember to keep conversational context from the conversation above and answer the question naturally without using any emojis.)"
     user_message = final_user_turn
 
     yield json.dumps({"type": "status", "message": "Analyzing request..."}) + "\n"
@@ -1558,6 +1586,11 @@ If the user is setting a memory or rule, output:
 
 If the student asks to generate or export a response as a PDF, output:
 {"tool": "generate_pdf_document", "title": "Operating Systems Concurrency", "content": "..."}
+
+If the student asks to write, draft, generate, or create a CV, resume, cover letter, essay, study notes, or code, or asks for canvas mode, you MUST enclose the document in:
+[CANVAS_DOCUMENT title="<Title in Title Case>" language="markdown|python|javascript|sql|html|kotlin|text"]
+<formatted complete document content here>
+[/CANVAS_DOCUMENT]
 """
         LargeModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenLargeModel")
         large_model = LargeModelCls()
