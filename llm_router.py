@@ -991,6 +991,11 @@ When the user asks to create, build, design, or generate a website, portfolio, l
 {"tool": "generate_website", "title": "<descriptive title>", "description": "<what the user wants>"}
 This tool is ONLY available when the GPT OSS model is selected. If the current model is NOT gpt_120b, reply:
 "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
+
+9. GENERATE PDF DOCUMENT / EXPORT AS PDF:
+When the user asks to generate, export, compile, or download your answer, previous response, study notes, revision summary, essay, code, or past paper answers as a PDF document (e.g. "give me that as a pdf", "can you make this a pdf", "generate a pdf of your answer", "export as pdf", "make a pdf document for this", "compile this to pdf"), output ONLY:
+{"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Operating Systems Concurrency>", "content": "<complete markdown text of the notes or response to compile into the PDF>"}
+CRITICAL: Do NOT tell the student that you cannot generate PDFs. You have direct access to this tool to generate downloadable PDFs!
 """
 
     context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
@@ -1117,6 +1122,30 @@ STRICT RULES:
                     return f"Here is your website -- \"{site_title}\". You can preview it below and ask me to make changes like colors, layout, sections, or content.\n\n[WEBSITE_PREVIEW]\n{html_output}\n[/WEBSITE_PREVIEW]"
                 else:
                     return "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
+            elif tool_name == "generate_pdf_document":
+                title = tool_call.get("title") or "Academic Study Notes"
+                content = tool_call.get("content") or ""
+                if (not content or len(content.strip()) < 20) and history:
+                    for h_msg in reversed(history):
+                        r = (h_msg.get("role") or "").lower()
+                        if r not in ("user", "student") and h_msg.get("content"):
+                            content = h_msg["content"]
+                            break
+                if not content:
+                    content = question
+                    
+                try:
+                    from pdf_compiler import compile_markdown_to_pdf_and_upload
+                    backend_url = os.getenv("KOTLIN_BACKEND_URL", "https://school.ishinadwelly.com")
+                    res = compile_markdown_to_pdf_and_upload(title, content, backend_url)
+                    if res and res.get("url"):
+                        pdf_url = res["url"]
+                        filename = res["filename"]
+                        return f"I have compiled your response into a PDF document:\n\n[Download {filename}]({pdf_url})\n\nYou can click or tap the link above to view or download your notes."
+                    else:
+                        return "I attempted to generate the PDF document, but the file storage service was temporarily unreachable. Please try again."
+                except Exception as e:
+                    return f"Error compiling PDF: {str(e)}"
         except Exception:
             pass
     
@@ -1139,6 +1168,9 @@ If external information is required, output:
 
 If the user is setting a memory or rule, output:
 {"tool": "save_memory", "preferred_name": "...", "custom_instructions": "...", "enrolled_units": [...], "add_memory": "...", "reply": "..."}
+
+If the student asks to generate or export a response as a PDF, output:
+{"tool": "generate_pdf_document", "title": "Operating Systems Concurrency", "content": "..."}
 """
         LargeModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenLargeModel")
         large_model = LargeModelCls()
@@ -1175,6 +1207,31 @@ If the user is setting a memory or rule, output:
                     except Exception as e:
                         return f"Error generating timetable: {str(e)}"
                 
+                elif tool_name == "generate_pdf_document":
+                    title = tool_call.get("title") or "Academic Study Notes"
+                    content = tool_call.get("content") or ""
+                    if (not content or len(content.strip()) < 20) and history:
+                        for h_msg in reversed(history):
+                            r = (h_msg.get("role") or "").lower()
+                            if r not in ("user", "student") and h_msg.get("content"):
+                                content = h_msg["content"]
+                                break
+                    if not content:
+                        content = question
+                        
+                    try:
+                        from pdf_compiler import compile_markdown_to_pdf_and_upload
+                        backend_url = os.getenv("KOTLIN_BACKEND_URL", "https://school.ishinadwelly.com")
+                        res = compile_markdown_to_pdf_and_upload(title, content, backend_url)
+                        if res and res.get("url"):
+                            pdf_url = res["url"]
+                            filename = res["filename"]
+                            return f"I have compiled your response into a PDF document:\n\n[Download {filename}]({pdf_url})\n\nYou can click or tap the link above to view or download your notes."
+                        else:
+                            return "I attempted to generate the PDF document, but the file storage service was temporarily unreachable. Please try again."
+                    except Exception as e:
+                        return f"Error compiling PDF: {str(e)}"
+
                 elif tool_name == "search_web":
                     query = tool_call.get("query", "")
                     tool_result, sources = await execute_web_search(query)
@@ -1251,6 +1308,11 @@ When the user asks to create, build, design, or generate a website, portfolio, l
 {"tool": "generate_website", "title": "<descriptive title>", "description": "<what the user wants>"}
 This tool is ONLY available when the GPT OSS model is selected. If the current model is NOT gpt_120b, reply:
 "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
+
+9. GENERATE PDF DOCUMENT / EXPORT AS PDF:
+When the user asks to generate, export, compile, or download your answer, previous response, study notes, revision summary, essay, code, or past paper answers as a PDF document (e.g. "give me that as a pdf", "can you make this a pdf", "generate a pdf of your answer", "export as pdf", "make a pdf document for this", "compile this to pdf"), output ONLY:
+{"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Operating Systems Concurrency>", "content": "<complete markdown text of the notes or response to compile into the PDF>"}
+CRITICAL: Do NOT tell the student that you cannot generate PDFs. You have direct access to this tool to generate downloadable PDFs!
 """
 
     context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
@@ -1407,6 +1469,37 @@ STRICT RULES:
                 else:
                     yield json.dumps({"type": "answer", "content": "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."}) + "\n"
                     return
+            elif tool_name == "generate_pdf_document":
+                yield json.dumps({"type": "status", "message": "Typesetting and compiling your PDF document..."}) + "\n"
+                title = tool_call.get("title") or "Academic Study Notes"
+                content = tool_call.get("content") or ""
+                if (not content or len(content.strip()) < 20) and history:
+                    for h_msg in reversed(history):
+                        r = (h_msg.get("role") or "").lower()
+                        if r not in ("user", "student") and h_msg.get("content"):
+                            content = h_msg["content"]
+                            break
+                if not content:
+                    content = question
+                    
+                try:
+                    from pdf_compiler import compile_markdown_to_pdf_and_upload
+                    backend_url = os.getenv("KOTLIN_BACKEND_URL", "https://school.ishinadwelly.com")
+                    res = compile_markdown_to_pdf_and_upload(title, content, backend_url)
+                    if res and res.get("url"):
+                        pdf_url = res["url"]
+                        filename = res["filename"]
+                        answer = f"I have compiled your response into a PDF document:\n\n[Download {filename}]({pdf_url})\n\nYou can click or tap the link above to view or download your notes."
+                        yield json.dumps({"type": "answer", "content": answer, "sources": []}, ensure_ascii=False) + "\n"
+                        return
+                    else:
+                        answer = "I attempted to generate the PDF document, but the file storage service was temporarily unreachable. Please try again."
+                        yield json.dumps({"type": "answer", "content": answer, "sources": []}, ensure_ascii=False) + "\n"
+                        return
+                except Exception as e:
+                    answer = f"Error compiling PDF: {str(e)}"
+                    yield json.dumps({"type": "answer", "content": answer, "sources": []}, ensure_ascii=False) + "\n"
+                    return
         except Exception:
             pass
     
@@ -1430,6 +1523,9 @@ If web search is needed, output:
 
 If the user is setting a memory or rule, output:
 {"tool": "save_memory", "preferred_name": "...", "custom_instructions": "...", "enrolled_units": [...], "add_memory": "...", "reply": "..."}
+
+If the student asks to generate or export a response as a PDF, output:
+{"tool": "generate_pdf_document", "title": "Operating Systems Concurrency", "content": "..."}
 """
         LargeModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenLargeModel")
         large_model = LargeModelCls()
@@ -1502,6 +1598,38 @@ If the user is setting a memory or rule, output:
                     except Exception as e:
                         tool_result = f"Error generating timetable: {str(e)}"
                 
+                elif tool_name == "generate_pdf_document":
+                    yield json.dumps({"type": "status", "message": "Typesetting and compiling your PDF document..."}) + "\n"
+                    title = tool_call.get("title") or "Academic Study Notes"
+                    content = tool_call.get("content") or ""
+                    if (not content or len(content.strip()) < 20) and history:
+                        for h_msg in reversed(history):
+                            r = (h_msg.get("role") or "").lower()
+                            if r not in ("user", "student") and h_msg.get("content"):
+                                content = h_msg["content"]
+                                break
+                    if not content:
+                        content = question
+                        
+                    try:
+                        from pdf_compiler import compile_markdown_to_pdf_and_upload
+                        backend_url = os.getenv("KOTLIN_BACKEND_URL", "https://school.ishinadwelly.com")
+                        res = compile_markdown_to_pdf_and_upload(title, content, backend_url)
+                        if res and res.get("url"):
+                            pdf_url = res["url"]
+                            filename = res["filename"]
+                            ans = f"I have compiled your response into a PDF document:\n\n[Download {filename}]({pdf_url})\n\nYou can click or tap the link above to view or download your notes."
+                            yield json.dumps({"type": "answer", "content": ans, "sources": []}, ensure_ascii=False) + "\n"
+                            return
+                        else:
+                            ans = "I attempted to generate the PDF document, but the file storage service was temporarily unreachable. Please try again."
+                            yield json.dumps({"type": "answer", "content": ans, "sources": []}, ensure_ascii=False) + "\n"
+                            return
+                    except Exception as e:
+                        ans = f"Error compiling PDF: {str(e)}"
+                        yield json.dumps({"type": "answer", "content": ans, "sources": []}, ensure_ascii=False) + "\n"
+                        return
+
                 elif tool_name == "search_web":
                     query = tool_call.get("query", "")
                     yield json.dumps({"type": "status", "stage": "web_search", "query": query, "message": f"Searching the web for '{query}'..."}) + "\n"

@@ -19,7 +19,7 @@ image = (
         "pip install --upgrade 'setuptools<70.0.0'",
         "playwright install --with-deps chromium"
     )
-    .add_local_python_source("video_analyzer", "audio_analyzer", "llm_router", "rag_search", "timetable_extractor", "quiz_generator", "document_analyzer", "agent")
+    .add_local_python_source("video_analyzer", "audio_analyzer", "llm_router", "rag_search", "timetable_extractor", "quiz_generator", "document_analyzer", "agent", "pdf_compiler")
 )
 
 # Define the persistent volume for RAG storage
