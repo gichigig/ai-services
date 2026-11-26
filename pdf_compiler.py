@@ -76,28 +76,23 @@ class TopicNumberedCanvas(canvas.Canvas):
         if self._pageNumber > 1:
             self.setFont("Helvetica-Bold", 8)
             self.setFillColor(colors.HexColor("#5C33CF"))
-            topic_header = (self.topic_title[:55] + "...") if len(self.topic_title) > 55 else self.topic_title
+            topic_header = (self.topic_title[:65] + "...") if len(self.topic_title) > 65 else self.topic_title
             self.drawString(54, 11 * inch - 36, topic_header.upper())
-            
-            self.setFont("Helvetica", 8)
-            self.setFillColor(colors.HexColor("#797693"))
-            self.drawRightString(8.5 * inch - 54, 11 * inch - 36, "CAMPUSCONNECT • BLUV AI")
-            
+
             self.setStrokeColor(colors.HexColor("#EFEFF8"))
             self.setLineWidth(0.75)
             self.line(54, 11 * inch - 42, 8.5 * inch - 54, 11 * inch - 42)
 
-        # Running Footer on all pages
+        # Clean Running Footer on all pages (page numbering only)
         self.setStrokeColor(colors.HexColor("#EFEFF8"))
         self.setLineWidth(0.75)
         self.line(54, 46, 8.5 * inch - 54, 46)
-        
+
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor("#797693"))
-        self.drawString(54, 32, "CampusConnect Academic Companion • Confidential Study Material")
         page_text = f"Page {self._pageNumber} of {page_count}"
         self.drawRightString(8.5 * inch - 54, 32, page_text)
-        
+
         self.restoreState()
 
 
@@ -239,15 +234,14 @@ def build_pdf_story(title: str, markdown_content: str, styles: Any) -> List[Any]
         textColor=colors.HexColor('#1E1B39')
     )
 
-    # 1. Document Header Block
-    story.append(Paragraph("CAMPUSCONNECT ACADEMIC COMPANION", subtitle_style))
-    story.append(Paragraph(html.escape(title), title_style))
-    created_at = datetime.now().strftime("%B %d, %Y • %I:%M %p")
-    story.append(Paragraph(f"Compiled by Bluv AI on {created_at}", meta_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#5C33CF"), spaceAfter=12, spaceBefore=2))
+    # 1. Clean Document Header Block (only if markdown does not start with its own top-level heading)
+    lines = markdown_content.splitlines()
+    first_non_empty = next((ln.strip() for ln in lines if ln.strip()), "")
+    if not first_non_empty.startswith("# ") and title:
+        story.append(Paragraph(html.escape(title), title_style))
+        story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#5C33CF"), spaceAfter=12, spaceBefore=4))
 
     # 2. Parse Markdown Lines
-    lines = markdown_content.splitlines()
     in_code_block = False
     code_buffer: List[str] = []
     in_table = False
