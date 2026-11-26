@@ -927,6 +927,24 @@ async def ask_qwen(question: str, context: str, student_id: str = None, history:
     """
     import json
     import requests
+    import os
+
+    # Fast-path: When a document is active in Canvas and student asks for PDF, compile directly without LLM latency
+    if canvas_context and isinstance(canvas_context, dict):
+        c_content = canvas_context.get("content", "")
+        c_title = canvas_context.get("title", "Document")
+        is_pdf_ask = any(k in question.lower() for k in ["pdf", "download as pdf", "export as pdf", "compile as pdf", "make a pdf", "get as pdf", "generate a pdf"])
+        if is_pdf_ask and c_content and len(c_content.strip()) > 30:
+            try:
+                from pdf_compiler import compile_markdown_to_pdf_and_upload
+                backend_url = os.getenv("KOTLIN_BACKEND_URL", "https://school.ishinadwelly.com")
+                res = compile_markdown_to_pdf_and_upload(c_title, c_content, backend_url)
+                if res and res.get("url"):
+                    pdf_url = res["url"]
+                    filename = res["filename"]
+                    return f"I have compiled your active canvas document into a PDF:\n\n[Download {filename}]({pdf_url})\n\nYou can click or tap the link above to view or download your document."
+            except Exception as e:
+                print(f"Direct canvas PDF compilation fallback: {e}")
     
     memory_section = build_memory_prompt(user_memory)
     
@@ -1004,8 +1022,10 @@ This tool is ONLY available when the GPT OSS model is selected. If the current m
 "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
 
 9. GENERATE PDF DOCUMENT / EXPORT AS PDF:
-When the user asks to generate, export, compile, or download your answer, previous response, study notes, revision summary, essay, code, or past paper answers as a PDF document (e.g. "give me that as a pdf", "can you make this a pdf", "generate a pdf of your answer", "export as pdf", "make a pdf document for this", "compile this to pdf"), output ONLY:
-{"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Operating Systems Concurrency>", "content": "<complete markdown text of the notes or response to compile into the PDF>"}
+When the user asks to generate, export, compile, or download your answer, previous response, study notes, revision summary, essay, code, CV, resume, or past paper answers as a PDF document (e.g. "give me that as a pdf", "can you make this a pdf", "generate a pdf of your answer", "export as pdf", "make a pdf document for this", "compile this to pdf", "generate a pdf of the cv"):
+YOU MUST OUTPUT ONLY:
+{"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Curriculum Vitae>", "content": "<complete markdown text of the notes, CV, or response to compile into the PDF>"}
+CRITICAL PRIORITY: Whenever the user mentions PDF, export as PDF, or download PDF, ALWAYS use this tool! Do NOT output [CANVAS_DOCUMENT] when a PDF is requested.
 CRITICAL: Do NOT tell the student that you cannot generate PDFs. You have direct access to this tool to generate downloadable PDFs!
 
 10. CANVAS WORKSPACE & PROFESSIONAL DOCUMENT CRAFTSMANSHIP:
@@ -1092,6 +1112,7 @@ You MUST:
 [/CANVAS_DOCUMENT]
 4. Do NOT output partial snippets, summaries, or placeholders. The Canvas editor replaces its workspace with the content inside [CANVAS_DOCUMENT], so you MUST return the full document.
 5. Provide a short friendly 1-line lead-in (e.g. "I have updated the Key Skills section with detailed descriptions in your Canvas on the right.") before the [CANVAS_DOCUMENT] block.
+6. Executive Conciseness & Speed: Keep the document focused, high-density, and punchy (400-600 words). Do not generate endless repetitive filler so the response is fast and crisp.
 """
 
     canvas_force_prompt = ""
@@ -1140,7 +1161,7 @@ CRITICAL ANTI-HALLUCINATION RULES:
 4. STRICT RULE: Do not use emojis anywhere in your response."""
         return await active_model.generate.remote.aio(base_system_message + reasoning_prompt, summary_prompt, temperature=0.2)
 
-    max_gen_tokens = 4096 if (canvas_context or should_force_canvas(question)) else 2048
+    max_gen_tokens = 2048 if (canvas_context or should_force_canvas(question)) else 1024
     response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, final_user_turn, max_tokens=max_gen_tokens)
 
     # Check if small model executed a tool call
@@ -1212,8 +1233,10 @@ STRICT RULES:
                 else:
                     return "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
             elif tool_name == "generate_pdf_document":
-                title = tool_call.get("title") or "Academic Study Notes"
+                title = tool_call.get("title") or (canvas_context.get("title") if (canvas_context and isinstance(canvas_context, dict)) else None) or "Academic Study Notes"
                 content = tool_call.get("content") or ""
+                if (not content or len(content.strip()) < 20) and canvas_context and isinstance(canvas_context, dict):
+                    content = canvas_context.get("content") or ""
                 if (not content or len(content.strip()) < 20) and history:
                     for h_msg in reversed(history):
                         r = (h_msg.get("role") or "").lower()
@@ -1346,6 +1369,27 @@ CRITICAL RULE: Using ONLY the web search results above, answer the student's que
 async def ask_qwen_stream(question: str, context: str, student_id: str = None, history: list = None, user_memory: dict = None, selected_model: str = "small", use_reasoning: bool = False, attachment_context: str = "", canvas_context: dict = None):
     import json
     import requests
+    import os
+
+    # Fast-path: When a document is active in Canvas and student asks for PDF, compile directly without LLM latency
+    if canvas_context and isinstance(canvas_context, dict):
+        c_content = canvas_context.get("content", "")
+        c_title = canvas_context.get("title", "Document")
+        is_pdf_ask = any(k in question.lower() for k in ["pdf", "download as pdf", "export as pdf", "compile as pdf", "make a pdf", "get as pdf", "generate a pdf"])
+        if is_pdf_ask and c_content and len(c_content.strip()) > 30:
+            yield json.dumps({"type": "status", "message": "Typesetting and compiling your PDF document..."}) + "\n"
+            try:
+                from pdf_compiler import compile_markdown_to_pdf_and_upload
+                backend_url = os.getenv("KOTLIN_BACKEND_URL", "https://school.ishinadwelly.com")
+                res = compile_markdown_to_pdf_and_upload(c_title, c_content, backend_url)
+                if res and res.get("url"):
+                    pdf_url = res["url"]
+                    filename = res["filename"]
+                    ans = f"I have compiled your active canvas document into a PDF:\n\n[Download {filename}]({pdf_url})\n\nYou can click or tap the link above to view or download your document."
+                    yield json.dumps({"type": "answer", "content": ans, "sources": []}, ensure_ascii=False) + "\n"
+                    return
+            except Exception as e:
+                print(f"Direct canvas PDF stream fallback: {e}")
     
     memory_section = build_memory_prompt(user_memory)
     
@@ -1404,8 +1448,10 @@ This tool is ONLY available when the GPT OSS model is selected. If the current m
 "Website creation requires the GPT OSS 120B model for best results. Please switch to GPT OSS using the model selector at the top of the chat."
 
 9. GENERATE PDF DOCUMENT / EXPORT AS PDF:
-When the user asks to generate, export, compile, or download your answer, previous response, study notes, revision summary, essay, code, or past paper answers as a PDF document (e.g. "give me that as a pdf", "can you make this a pdf", "generate a pdf of your answer", "export as pdf", "make a pdf document for this", "compile this to pdf"), output ONLY:
-{"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Operating Systems Concurrency>", "content": "<complete markdown text of the notes or response to compile into the PDF>"}
+When the user asks to generate, export, compile, or download your answer, previous response, study notes, revision summary, essay, code, CV, resume, or past paper answers as a PDF document (e.g. "give me that as a pdf", "can you make this a pdf", "generate a pdf of your answer", "export as pdf", "make a pdf document for this", "compile this to pdf", "generate a pdf of the cv"):
+YOU MUST OUTPUT ONLY:
+{"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Curriculum Vitae>", "content": "<complete markdown text of the notes, CV, or response to compile into the PDF>"}
+CRITICAL PRIORITY: Whenever the user mentions PDF, export as PDF, or download PDF, ALWAYS use this tool! Do NOT output [CANVAS_DOCUMENT] when a PDF is requested.
 CRITICAL: Do NOT tell the student that you cannot generate PDFs. You have direct access to this tool to generate downloadable PDFs!
 
 10. CANVAS WORKSPACE & PROFESSIONAL DOCUMENT CRAFTSMANSHIP:
@@ -1492,6 +1538,7 @@ You MUST:
 [/CANVAS_DOCUMENT]
 4. Do NOT output partial snippets, summaries, or placeholders. The Canvas editor replaces its workspace with the content inside [CANVAS_DOCUMENT], so you MUST return the full document.
 5. Provide a short friendly 1-line lead-in (e.g. "I have updated the Key Skills section with detailed descriptions in your Canvas on the right.") before the [CANVAS_DOCUMENT] block.
+6. Executive Conciseness & Speed: Keep the document focused, high-density, and punchy (400-600 words). Do not generate endless repetitive filler so the response is fast and crisp.
 """
 
     canvas_force_prompt = ""
@@ -1549,7 +1596,7 @@ CRITICAL ANTI-HALLUCINATION RULES:
         yield json.dumps({"type": "answer", "content": summary_response, "sources": sources}, ensure_ascii=False) + "\n"
         return
 
-    max_gen_tokens = 4096 if (canvas_context or should_force_canvas(question)) else 2048
+    max_gen_tokens = 2048 if (canvas_context or should_force_canvas(question)) else 1024
     response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, final_user_turn, max_tokens=max_gen_tokens)
 
     # Check if small model executed a tool call
@@ -1777,8 +1824,10 @@ If the student asks to write, draft, generate, or create a CV, resume, cover let
                 
                 elif tool_name == "generate_pdf_document":
                     yield json.dumps({"type": "status", "message": "Typesetting and compiling your PDF document..."}) + "\n"
-                    title = tool_call.get("title") or "Academic Study Notes"
+                    title = tool_call.get("title") or (canvas_context.get("title") if (canvas_context and isinstance(canvas_context, dict)) else None) or "Academic Study Notes"
                     content = tool_call.get("content") or ""
+                    if (not content or len(content.strip()) < 20) and canvas_context and isinstance(canvas_context, dict):
+                        content = canvas_context.get("content") or ""
                     if (not content or len(content.strip()) < 20) and history:
                         for h_msg in reversed(history):
                             r = (h_msg.get("role") or "").lower()
