@@ -55,7 +55,7 @@ class QwenSmallModel:
             engine_args = AsyncEngineArgs(
                 model=model_name,
                 tensor_parallel_size=1,
-                max_model_len=4096,
+                max_model_len=8192,
                 enforce_eager=True,
                 trust_remote_code=True,
             )
@@ -68,7 +68,7 @@ class QwenSmallModel:
             engine_args = AsyncEngineArgs(
                 model=fallback_model,
                 tensor_parallel_size=1,
-                max_model_len=4096,
+                max_model_len=8192,
                 enforce_eager=True,
             )
             self.engine = AsyncLLMEngine.from_engine_args(engine_args)
@@ -81,7 +81,7 @@ class QwenSmallModel:
         return True
 
     @modal.method()
-    async def generate(self, system_message: str = "", user_message: str = "", messages: list = None, temperature: float = 0.7, max_tokens: int = 2048) -> str:
+    async def generate(self, system_message: str = "", user_message: str = "", messages: list = None, temperature: float = 0.7, max_tokens: int = 4096) -> str:
         from vllm import SamplingParams
         import uuid
         
@@ -100,7 +100,7 @@ class QwenSmallModel:
             temperature=temperature,
             top_p=0.9,
             max_tokens=max_tokens,
-            repetition_penalty=1.15,
+            repetition_penalty=1.05,
             stop=["<|im_end|>", "<|endoftext|>"],
         )
         
@@ -216,7 +216,7 @@ class QwenLargeModel:
             self.active_model = fallback_model
 
     @modal.method()
-    async def generate(self, system_message: str = "", user_message: str = "", messages: list = None, temperature: float = 0.7) -> str:
+    async def generate(self, system_message: str = "", user_message: str = "", messages: list = None, temperature: float = 0.7, max_tokens: int = 4096) -> str:
         from vllm import SamplingParams
         import uuid
         
@@ -233,8 +233,8 @@ class QwenLargeModel:
         sampling_params = SamplingParams(
             temperature=temperature,
             top_p=0.9,
-            max_tokens=1024,
-            repetition_penalty=1.15,
+            max_tokens=max_tokens,
+            repetition_penalty=1.05,
             stop=["<|im_end|>", "<|endoftext|>"],
         )
         
@@ -1008,14 +1008,46 @@ When the user asks to generate, export, compile, or download your answer, previo
 {"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Operating Systems Concurrency>", "content": "<complete markdown text of the notes or response to compile into the PDF>"}
 CRITICAL: Do NOT tell the student that you cannot generate PDFs. You have direct access to this tool to generate downloadable PDFs!
 
-10. CANVAS WORKSPACE (MANDATORY FOR CVs, RESUMES, ESSAYS, STUDY GUIDES & CODE):
-When the student asks to write, draft, generate, or create a CV, resume, cover letter, essay, study notes, revision sheet, lab report, chapter summary, detailed assignment answer, or multi-function code script, OR whenever the user mentions "canvas", "in canvas form", "so i can edit", or "write a draft":
-YOU MUST ENCLOSE THE ENTIRE DRAFTED DOCUMENT INSIDE:
+10. CANVAS WORKSPACE & PROFESSIONAL DOCUMENT CRAFTSMANSHIP:
+When the student asks to write, draft, generate, or edit a CV, resume, cover letter, essay, study notes, revision sheet, lab report, chapter summary, detailed assignment answer, or multi-function code script, OR whenever the user mentions "canvas", "in canvas form", "so i can edit", or asks to revise an active canvas document:
+YOU MUST ENCLOSE THE ENTIRE DRAFTED OR REVISED DOCUMENT INSIDE:
 [CANVAS_DOCUMENT title="<Clear Descriptive Title in Title Case>" language="markdown|python|javascript|sql|html|kotlin|text"]
 <formatted complete document content here>
 [/CANVAS_DOCUMENT]
-CRITICAL MANDATORY INSTRUCTION:
-Do NOT output the document body outside of the [CANVAS_DOCUMENT] tags! If you write it as plain chat text without the tags, the interactive Canvas Workspace editor WILL NOT OPEN and the user will not be able to edit or copy it. You must always wrap the drafted content inside [CANVAS_DOCUMENT ...] tags. You can include a short 1-line friendly note before or after the tag (e.g. "I've drafted your CV in the Canvas workspace on the right so you can edit any fields, copy the text, or export to PDF.").
+
+CRITICAL CRAFTSMANSHIP RULES FOR CVs & RESUMES:
+- Never generate a lazy, skeletal, or plain text CV. Always produce a rich, highly professional, ATS-optimized, modern executive CV.
+- Structure with clear Markdown formatting:
+  # [Full Name]
+  **[Target Role / Professional Title]**
+  [City, Kenya] | [Phone Number] | [Email Address] | [LinkedIn / Portfolio Profile]
+  ---
+  ## Professional Summary
+  [Compelling 3-4 sentence paragraph highlighting core strengths, value proposition, and career focus.]
+  ## Core Competencies & Skills
+  Categorize skills into bolded domains with clear bullet points:
+  - **[Category 1, e.g. Customer Relations & Communication]**: [Skill A], [Skill B], [Skill C]
+  - **[Category 2, e.g. Technical & Software Tools]**: [Skill A], [Skill B], [Skill C]
+  - **[Category 3, e.g. Operational & Problem Solving]**: [Skill A], [Skill B], [Skill C]
+  ## Professional Experience
+  ### [Role / Position Title] — [Company / Organization Name]
+  *[Start Date] - [End Date] | [Location]*
+  - Start bullet points with strong action verbs (Spearheaded, Resolved, Coordinated, Boosted).
+  - Include realistic metrics and achievements (e.g. "Maintained 95%+ customer satisfaction score across 60+ daily interactions").
+  ## Education & Academic Qualifications
+  ### [Degree / Diploma / Certificate] — [Institution / University Name]
+  *[Start Year] - [Graduation Year]*
+  - Relevant coursework, academic honors, or projects.
+  ## Certifications & Training
+  - **[Certification Title]** - [Issuing Body / Year]
+  ## Referees
+  Available upon request.
+
+CRITICAL DIRECTIVE FOR CANVAS REVISIONS & EDITS:
+When the student asks to edit something (e.g. "make the skills more detailed", "expand experience", "fix grammar", "change summary"):
+1. You MUST rewrite and output the COMPLETE document with the requested changes seamlessly integrated into the whole document.
+2. Do NOT output only the edited section. The student's Canvas Editor replaces the document with your output, so outputting a fragment will destroy their document. Always output the full, rich, complete document inside [CANVAS_DOCUMENT title="..." language="markdown"]...[/CANVAS_DOCUMENT].
+3. Make the requested change substantial, detailed, and polished.
 """
 
     context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
@@ -1023,12 +1055,16 @@ Do NOT output the document body outside of the [CANVAS_DOCUMENT] tags! If you wr
     
     history_str = ""
     if history and len(history) > 0:
+        import re
         history_str = "Conversation Context (Prior messages in this chat):\n"
         for msg in history:
             role = "Student" if msg.get("role", "").lower() in ["user", "student"] else "Bluv AI"
             content = msg.get("content", "")
             if content:
-                history_str += f"{role}: {content}\n"
+                # Strip out previous huge canvas documents so we don't blow token budget
+                clean_content = re.sub(r'\[CANVAS_DOCUMENT\b[^\]]*\][\s\S]*?\[/CANVAS_DOCUMENT\]', '[Canvas Document in Workspace]', content)
+                clean_content = re.sub(r'\[CANVAS_DOCUMENT\b[^\]]*\][\s\S]*', '[Canvas Document in Workspace]', clean_content)
+                history_str += f"{role}: {clean_content}\n"
         history_str += "\n"
 
     canvas_str = ""
@@ -1037,7 +1073,26 @@ Do NOT output the document body outside of the [CANVAS_DOCUMENT] tags! If you wr
         c_content = canvas_context.get("content", "")
         c_lang = canvas_context.get("language", "markdown")
         if c_content:
-            canvas_str = f"ACTIVE CANVAS WORKSPACE (CURRENT DOCUMENT BEING EDITED BY USER):\nTitle: {c_title}\nLanguage: {c_lang}\n\n<ACTIVE_CANVAS>\n{c_content}\n</ACTIVE_CANVAS>\n\nCRITICAL DIRECTIVE FOR CANVAS EDITING:\nThe student is viewing and directly editing this document in their interactive Canvas Editor.\nThe student has provided an instruction to edit, continue, expand, or adjust this document.\nYou MUST:\n1. Carefully analyze their requested change against the text inside <ACTIVE_CANVAS>.\n2. Apply the requested additions, edits, or continuations while keeping the rest of their document coherent and high-quality.\n3. Output the updated document wrapped in:\n[CANVAS_DOCUMENT title=\"{c_title}\" language=\"{c_lang}\"]\n<full updated document text here>\n[/CANVAS_DOCUMENT]\n4. Do NOT output unformatted snippets. Always output the full updated canvas document within the [CANVAS_DOCUMENT] tags so their editor updates seamlessly.\n\n"
+            canvas_str = f"""CURRENT ACTIVE DOCUMENT IN CANVAS WORKSPACE:
+Title: {c_title}
+Language: {c_lang}
+
+<ACTIVE_CANVAS_DOCUMENT>
+{c_content}
+</ACTIVE_CANVAS_DOCUMENT>
+
+CRITICAL DIRECTIVE FOR CANVAS DOCUMENT EDITING:
+The student is editing this document in their interactive Canvas Editor and gave this instruction: "{question}".
+You MUST:
+1. Revise, update, or expand the document based on the student's request.
+2. Output the COMPLETE, FULLY-UPDATED document from the first line to the end, incorporating the requested changes.
+3. WRAP THE ENTIRE COMPLETE UPDATED DOCUMENT INSIDE:
+[CANVAS_DOCUMENT title="{c_title}" language="{c_lang}"]
+<full updated complete document here>
+[/CANVAS_DOCUMENT]
+4. Do NOT output partial snippets, summaries, or placeholders. The Canvas editor replaces its workspace with the content inside [CANVAS_DOCUMENT], so you MUST return the full document.
+5. Provide a short friendly 1-line lead-in (e.g. "I have updated the Key Skills section with detailed descriptions in your Canvas on the right.") before the [CANVAS_DOCUMENT] block.
+"""
 
     canvas_force_prompt = ""
     if not canvas_context and should_force_canvas(question):
@@ -1085,7 +1140,8 @@ CRITICAL ANTI-HALLUCINATION RULES:
 4. STRICT RULE: Do not use emojis anywhere in your response."""
         return await active_model.generate.remote.aio(base_system_message + reasoning_prompt, summary_prompt, temperature=0.2)
 
-    response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, final_user_turn)
+    max_gen_tokens = 4096 if (canvas_context or should_force_canvas(question)) else 2048
+    response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, final_user_turn, max_tokens=max_gen_tokens)
 
     # Check if small model executed a tool call
     tool_call = extract_tool_call(response)
@@ -1213,7 +1269,7 @@ If the student asks to write, draft, generate, or create a CV, resume, cover let
         LargeModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenLargeModel")
         large_model = LargeModelCls()
         
-        response = await large_model.generate.remote.aio(large_system_message, user_message)
+        response = await large_model.generate.remote.aio(large_system_message, user_message, max_tokens=max_gen_tokens)
         
         # Check if the response is a tool call
         tool_call = extract_tool_call(response)
@@ -1352,14 +1408,46 @@ When the user asks to generate, export, compile, or download your answer, previo
 {"tool": "generate_pdf_document", "title": "<clear topic title in title case, e.g. Operating Systems Concurrency>", "content": "<complete markdown text of the notes or response to compile into the PDF>"}
 CRITICAL: Do NOT tell the student that you cannot generate PDFs. You have direct access to this tool to generate downloadable PDFs!
 
-10. CANVAS WORKSPACE (MANDATORY FOR CVs, RESUMES, ESSAYS, STUDY GUIDES & CODE):
-When the student asks to write, draft, generate, or create a CV, resume, cover letter, essay, study notes, revision sheet, lab report, chapter summary, detailed assignment answer, or multi-function code script, OR whenever the user mentions "canvas", "in canvas form", "so i can edit", or "write a draft":
-YOU MUST ENCLOSE THE ENTIRE DRAFTED DOCUMENT INSIDE:
+10. CANVAS WORKSPACE & PROFESSIONAL DOCUMENT CRAFTSMANSHIP:
+When the student asks to write, draft, generate, or edit a CV, resume, cover letter, essay, study notes, revision sheet, lab report, chapter summary, detailed assignment answer, or multi-function code script, OR whenever the user mentions "canvas", "in canvas form", "so i can edit", or asks to revise an active canvas document:
+YOU MUST ENCLOSE THE ENTIRE DRAFTED OR REVISED DOCUMENT INSIDE:
 [CANVAS_DOCUMENT title="<Clear Descriptive Title in Title Case>" language="markdown|python|javascript|sql|html|kotlin|text"]
 <formatted complete document content here>
 [/CANVAS_DOCUMENT]
-CRITICAL MANDATORY INSTRUCTION:
-Do NOT output the document body outside of the [CANVAS_DOCUMENT] tags! If you write it as plain chat text without the tags, the interactive Canvas Workspace editor WILL NOT OPEN and the user will not be able to edit or copy it. You must always wrap the drafted content inside [CANVAS_DOCUMENT ...] tags. You can include a short 1-line friendly note before or after the tag (e.g. "I've drafted your CV in the Canvas workspace on the right so you can edit any fields, copy the text, or export to PDF.").
+
+CRITICAL CRAFTSMANSHIP RULES FOR CVs & RESUMES:
+- Never generate a lazy, skeletal, or plain text CV. Always produce a rich, highly professional, ATS-optimized, modern executive CV.
+- Structure with clear Markdown formatting:
+  # [Full Name]
+  **[Target Role / Professional Title]**
+  [City, Kenya] | [Phone Number] | [Email Address] | [LinkedIn / Portfolio Profile]
+  ---
+  ## Professional Summary
+  [Compelling 3-4 sentence paragraph highlighting core strengths, value proposition, and career focus.]
+  ## Core Competencies & Skills
+  Categorize skills into bolded domains with clear bullet points:
+  - **[Category 1, e.g. Customer Relations & Communication]**: [Skill A], [Skill B], [Skill C]
+  - **[Category 2, e.g. Technical & Software Tools]**: [Skill A], [Skill B], [Skill C]
+  - **[Category 3, e.g. Operational & Problem Solving]**: [Skill A], [Skill B], [Skill C]
+  ## Professional Experience
+  ### [Role / Position Title] — [Company / Organization Name]
+  *[Start Date] - [End Date] | [Location]*
+  - Start bullet points with strong action verbs (Spearheaded, Resolved, Coordinated, Boosted).
+  - Include realistic metrics and achievements (e.g. "Maintained 95%+ customer satisfaction score across 60+ daily interactions").
+  ## Education & Academic Qualifications
+  ### [Degree / Diploma / Certificate] — [Institution / University Name]
+  *[Start Year] - [Graduation Year]*
+  - Relevant coursework, academic honors, or projects.
+  ## Certifications & Training
+  - **[Certification Title]** - [Issuing Body / Year]
+  ## Referees
+  Available upon request.
+
+CRITICAL DIRECTIVE FOR CANVAS REVISIONS & EDITS:
+When the student asks to edit something (e.g. "make the skills more detailed", "expand experience", "fix grammar", "change summary"):
+1. You MUST rewrite and output the COMPLETE document with the requested changes seamlessly integrated into the whole document.
+2. Do NOT output only the edited section. The student's Canvas Editor replaces the document with your output, so outputting a fragment will destroy their document. Always output the full, rich, complete document inside [CANVAS_DOCUMENT title="..." language="markdown"]...[/CANVAS_DOCUMENT].
+3. Make the requested change substantial, detailed, and polished.
 """
 
     context_str = f"Context:\n{context}\n\n" if context and context != "No relevant context found." else ""
@@ -1367,12 +1455,16 @@ Do NOT output the document body outside of the [CANVAS_DOCUMENT] tags! If you wr
     
     history_str = ""
     if history and len(history) > 0:
+        import re
         history_str = "Conversation Context (Prior messages in this chat):\n"
         for msg in history:
             role = "Student" if msg.get("role", "").lower() in ["user", "student"] else "Bluv AI"
             content = msg.get("content", "")
             if content:
-                history_str += f"{role}: {content}\n"
+                # Strip out previous huge canvas documents so we don't blow token budget
+                clean_content = re.sub(r'\[CANVAS_DOCUMENT\b[^\]]*\][\s\S]*?\[/CANVAS_DOCUMENT\]', '[Canvas Document in Workspace]', content)
+                clean_content = re.sub(r'\[CANVAS_DOCUMENT\b[^\]]*\][\s\S]*', '[Canvas Document in Workspace]', clean_content)
+                history_str += f"{role}: {clean_content}\n"
         history_str += "\n"
 
     canvas_str = ""
@@ -1381,7 +1473,26 @@ Do NOT output the document body outside of the [CANVAS_DOCUMENT] tags! If you wr
         c_content = canvas_context.get("content", "")
         c_lang = canvas_context.get("language", "markdown")
         if c_content:
-            canvas_str = f"ACTIVE CANVAS WORKSPACE (CURRENT DOCUMENT BEING EDITED BY USER):\nTitle: {c_title}\nLanguage: {c_lang}\n\n<ACTIVE_CANVAS>\n{c_content}\n</ACTIVE_CANVAS>\n\nCRITICAL DIRECTIVE FOR CANVAS EDITING:\nThe student is viewing and directly editing this document in their interactive Canvas Editor.\nThe student has provided an instruction to edit, continue, expand, or adjust this document.\nYou MUST:\n1. Carefully analyze their requested change against the text inside <ACTIVE_CANVAS>.\n2. Apply the requested additions, edits, or continuations while keeping the rest of their document coherent and high-quality.\n3. Output the updated document wrapped in:\n[CANVAS_DOCUMENT title=\"{c_title}\" language=\"{c_lang}\"]\n<full updated document text here>\n[/CANVAS_DOCUMENT]\n4. Do NOT output unformatted snippets. Always output the full updated canvas document within the [CANVAS_DOCUMENT] tags so their editor updates seamlessly.\n\n"
+            canvas_str = f"""CURRENT ACTIVE DOCUMENT IN CANVAS WORKSPACE:
+Title: {c_title}
+Language: {c_lang}
+
+<ACTIVE_CANVAS_DOCUMENT>
+{c_content}
+</ACTIVE_CANVAS_DOCUMENT>
+
+CRITICAL DIRECTIVE FOR CANVAS DOCUMENT EDITING:
+The student is editing this document in their interactive Canvas Editor and gave this instruction: "{question}".
+You MUST:
+1. Revise, update, or expand the document based on the student's request.
+2. Output the COMPLETE, FULLY-UPDATED document from the first line to the end, incorporating the requested changes.
+3. WRAP THE ENTIRE COMPLETE UPDATED DOCUMENT INSIDE:
+[CANVAS_DOCUMENT title="{c_title}" language="{c_lang}"]
+<full updated complete document here>
+[/CANVAS_DOCUMENT]
+4. Do NOT output partial snippets, summaries, or placeholders. The Canvas editor replaces its workspace with the content inside [CANVAS_DOCUMENT], so you MUST return the full document.
+5. Provide a short friendly 1-line lead-in (e.g. "I have updated the Key Skills section with detailed descriptions in your Canvas on the right.") before the [CANVAS_DOCUMENT] block.
+"""
 
     canvas_force_prompt = ""
     if not canvas_context and should_force_canvas(question):
@@ -1438,7 +1549,8 @@ CRITICAL ANTI-HALLUCINATION RULES:
         yield json.dumps({"type": "answer", "content": summary_response, "sources": sources}, ensure_ascii=False) + "\n"
         return
 
-    response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, final_user_turn)
+    max_gen_tokens = 4096 if (canvas_context or should_force_canvas(question)) else 2048
+    response = await active_model.generate.remote.aio(small_system_message + reasoning_prompt, final_user_turn, max_tokens=max_gen_tokens)
 
     # Check if small model executed a tool call
     tool_call = extract_tool_call(response)
@@ -1595,7 +1707,7 @@ If the student asks to write, draft, generate, or create a CV, resume, cover let
         LargeModelCls = modal.Cls.from_name("bruv-schools-llm", "QwenLargeModel")
         large_model = LargeModelCls()
         
-        response = await large_model.generate.remote.aio(large_system_message, user_message)
+        response = await large_model.generate.remote.aio(large_system_message, user_message, max_tokens=max_gen_tokens)
         
         tool_call = extract_tool_call(response)
         if tool_call:
