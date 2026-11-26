@@ -8,8 +8,8 @@ vllm_image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
         "vllm==0.6.6.post1",
-        "transformers>=4.49.0",
-        "accelerate>=0.26.0",
+        "transformers>=4.47.0,<4.50.0",
+        "accelerate>=0.26.0,<1.4.0",
         "hf-transfer==0.1.8",
         "pyairports",
         "duckduckgo-search==5.3.1",
@@ -50,12 +50,12 @@ class QwenSmallModel:
         from transformers import AutoTokenizer
         import os
         
-        model_name = os.getenv("QWEN_SMALL_MODEL", "Qwen/Qwen3-8B")
+        model_name = os.getenv("QWEN_SMALL_MODEL", "Qwen/Qwen2.5-7B-Instruct-AWQ")
         try:
             engine_args = AsyncEngineArgs(
                 model=model_name,
                 tensor_parallel_size=1,
-                max_model_len=8192,
+                max_model_len=16384,
                 enforce_eager=True,
                 trust_remote_code=True,
             )
@@ -68,7 +68,7 @@ class QwenSmallModel:
             engine_args = AsyncEngineArgs(
                 model=fallback_model,
                 tensor_parallel_size=1,
-                max_model_len=8192,
+                max_model_len=16384,
                 enforce_eager=True,
             )
             self.engine = AsyncLLMEngine.from_engine_args(engine_args)
@@ -104,14 +104,20 @@ class QwenSmallModel:
             stop=["<|im_end|>", "<|endoftext|>"],
         )
         
-        results_generator = self.engine.generate(prompt, sampling_params, request_id)
-        final_output = None
-        
-        # Async generator yields the output as it's generated; we want the final result.
-        async for request_output in results_generator:
-            final_output = request_output
-            
-        return final_output.outputs[0].text.strip()
+        try:
+            results_generator = self.engine.generate(prompt, sampling_params, request_id)
+            final_output = None
+
+            # Async generator yields the output as it's generated; we want the final result.
+            async for request_output in results_generator:
+                final_output = request_output
+
+            if final_output and final_output.outputs:
+                return final_output.outputs[0].text.strip()
+            return ""
+        except Exception as e:
+            print(f"[QwenSmallModel.generate error] {e}")
+            return ""
 
 
 @app.cls(gpu="H200", image=vllm_image, timeout=1200, min_containers=0, scaledown_window=30)
